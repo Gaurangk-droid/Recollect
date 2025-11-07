@@ -28,7 +28,7 @@ const handleVerify = async () => {
     Alert.alert('Verification failed', 'Agency not found.')
   } else {
     Alert.alert('✅ Success', 'Agency verified successfully!')
-    navigation.navigate('Login', { verifiedAgencyCode: agencyCode.trim() })
+      navigation.navigate('Login', { verifiedAgencyCode: data.id }) 
   }
 }
 
