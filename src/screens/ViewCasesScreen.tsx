@@ -16,7 +16,11 @@ import {
   ActivityIndicator,
   IconButton,
 } from 'react-native-paper'
+import { useNavigation } from '@react-navigation/native'
+import { TouchableOpacity } from 'react-native'
 import { supabase } from '../lib/supabaseClient'
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import type { RootStackParamList } from '../navigation/AppNavigator'
 
 type Case = {
   id: string
@@ -30,6 +34,9 @@ type Case = {
 }
 
 export default function ViewCasesScreen() {
+    type ViewCasesNav = NativeStackNavigationProp<RootStackParamList, 'ViewCases'>
+const navigation = useNavigation<ViewCasesNav>()
+   
   const [loading, setLoading] = useState(true)
   const [cases, setCases] = useState<Case[]>([])
   const [filteredCases, setFilteredCases] = useState<Case[]>([])
@@ -107,7 +114,9 @@ export default function ViewCasesScreen() {
     }
   }, [searchQuery, cases])
 
+ 
   const renderCaseCard = ({ item }: { item: Case }) => (
+  <TouchableOpacity onPress={() => navigation.navigate('CaseDetails', { caseData: item })}>
     <Card style={styles.card} mode="elevated">
       <Card.Title
         title={item.account_name}
@@ -123,7 +132,8 @@ export default function ViewCasesScreen() {
         </Paragraph>
       </Card.Content>
     </Card>
-  )
+  </TouchableOpacity>
+)
 
   return (
     <PaperProvider>

@@ -9,6 +9,7 @@ import DashboardScreen from '../screens/Dashboard'
 import AddCaseScreen from '../screens/AddCase'
 import LoginScreen from '../screens/Login'
 import ViewCasesScreen from '../screens/ViewCasesScreen'
+import CaseDetails from '../screens/CaseDetails'
 
 export type RootStackParamList = {
   AgencyVerification: undefined
@@ -16,6 +17,7 @@ export type RootStackParamList = {
   Dashboard: undefined
   AddCase: undefined
   ViewCases: undefined
+  CaseDetails: { caseData: any }
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -42,6 +44,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="AddCase" component={AddCaseScreen} />
         <Stack.Screen name="ViewCases" component={ViewCasesScreen} />
+        <Stack.Screen name="CaseDetails" component={CaseDetails} />
       </Stack.Navigator>
     </NavigationContainer>
   )
