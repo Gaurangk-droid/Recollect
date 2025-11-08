@@ -39,7 +39,7 @@ export default function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="AgencyVerification" component={AgencyVerificationScreen} />
-w        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="AddCase" component={AddCaseScreen} />
         <Stack.Screen name="ViewCases" component={ViewCasesScreen} />
