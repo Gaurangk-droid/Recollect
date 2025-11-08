@@ -20,9 +20,9 @@ export default function DashboardScreen() {
         <Button
           mode="outlined"
           style={styles.button}
-          onPress={() => navigation.navigate('UpdateCase' as never)} // optional future route
+          onPress={() => navigation.navigate('ViewCases' as never)} // optional future route
         >
-          ✏️ Update Case
+          💻 All Cases
         </Button>
       </Surface>
     </View>
