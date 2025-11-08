@@ -9,12 +9,15 @@ import {
   Alert,
 } from 'react-native'
 import {
+  Provider as PaperProvider,
   TextInput,
   Button,
   Title,
   Surface,
   Paragraph,
   Menu,
+  Switch,
+  Divider,
 } from 'react-native-paper'
 import { supabase } from '../lib/supabaseClient'
 
@@ -27,18 +30,21 @@ function generateCaseId(agencyCode: string, userName: string) {
   return `${agencyPart}-${userPart}-${year}-${random}`
 }
 
+type AgencyUser = { id: string; name: string }
+
 export default function AddCaseScreen() {
   const [loading, setLoading] = useState(false)
 
-  // Dropdowns and form fields
+  // Dropdowns
   const [loanTypeMenuVisible, setLoanTypeMenuVisible] = useState(false)
   const [loanType, setLoanType] = useState('')
   const loanTypes = ['Personal', 'CC', '2 Wheeler', 'Auto', 'Home', 'Gold']
 
   const [assignedToMenuVisible, setAssignedToMenuVisible] = useState(false)
   const [assignedTo, setAssignedTo] = useState('')
-  const [agencyUsers, setAgencyUsers] = useState<{ id: string; name: string }[]>([])
+  const [agencyUsers, setAgencyUsers] = useState<AgencyUser[]>([])
 
+  // Form fields
   const [account_name, setAccountName] = useState('')
   const [account_number, setAccountNumber] = useState('')
   const [contact_number, setContactNumber] = useState('')
@@ -62,51 +68,8 @@ export default function AddCaseScreen() {
   const [upgrade_amount, setUpgradeAmount] = useState('')
   const [loan_tenure_months, setLoanTenureMonths] = useState('')
 
-  // Load agency users on screen load
-  useEffect(() => {
-    const loadAgencyUsers = async () => {
-      try {
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError || !user) return
-
-        // fetch current user info (agency_id + name)
-        const { data: profile, error: profileError } = await supabase
-          .from('users')
-          .select('id, name, agency_id')
-          .eq('id', user.id)
-          .single()
-
-        if (profileError || !profile) return
-
-        // fetch agency_code from agencies table
-        const { data: agencyRow } = await supabase
-          .from('agencies')
-          .select('agency_code')
-          .eq('id', profile.agency_id)
-          .single()
-
-        const agencyCode = agencyRow?.agency_code || ''
-        setUserInfo({
-          id: user.id,
-          name: profile.name,
-          agency_id: profile.agency_id,
-          agency_code: agencyCode,
-        })
-
-        // fetch all users in same agency
-        const { data: users } = await supabase
-          .from('users')
-          .select('id, name')
-          .eq('agency_id', profile.agency_id)
-
-        setAgencyUsers(users || [])
-      } catch (err) {
-        console.error('Error loading agency users:', err)
-      }
-    }
-
-    loadAgencyUsers()
-  }, [])
+  // Toggle for pending balance (false = use overdue_amount, true = use upgrade_amount)
+  const [useUpgradeAmount, setUseUpgradeAmount] = useState(false)
 
   // store current user info
   const [userInfo, setUserInfo] = useState<{
@@ -116,6 +79,61 @@ export default function AddCaseScreen() {
     agency_code: string
   } | null>(null)
 
+  // Load agency users on screen load
+  useEffect(() => {
+    const loadAgencyUsers = async () => {
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) return
+
+        const { data: profile, error: profileError } = await supabase
+          .from('users')
+          .select('id, name, agency_id')
+          .eq('id', user.id)
+          .single()
+
+        if (profileError || !profile) return
+
+        const { data: agencyRow, error: agencyError } = await supabase
+          .from('agencies')
+          .select('agency_code')
+          .eq('id', profile.agency_id)
+          .single()
+
+        if (agencyError) console.log('Agency fetch error:', agencyError)
+        const agencyCode = agencyRow?.agency_code || ''
+
+        setUserInfo({
+          id: user.id,
+          name: profile.name,
+          agency_id: profile.agency_id,
+          agency_code: agencyCode,
+        })
+
+        const { data: users, error: usersError } = await supabase
+          .from('users')
+          .select('id, name')
+          .eq('agency_id', profile.agency_id)
+
+        if (usersError) console.log('Users fetch error:', usersError)
+        setAgencyUsers(users || [])
+      } catch (err) {
+        console.error('Error loading agency users:', err)
+      }
+    }
+
+    loadAgencyUsers()
+  }, [])
+
+  // Auto compute pending balance
+  useEffect(() => {
+    if (useUpgradeAmount) {
+      setPendingBalance(upgrade_amount || '')
+    } else {
+      setPendingBalance(overdue_amount || '')
+    }
+  }, [useUpgradeAmount, overdue_amount, upgrade_amount])
+
   // --- handle save
   const handleSave = async () => {
     if (!loanType || !account_name || !overdue_amount) {
@@ -123,6 +141,9 @@ export default function AddCaseScreen() {
     }
     if (!assignedTo) {
       return Alert.alert('Missing Data', 'Please select who this case is assigned to.')
+    }
+    if (useUpgradeAmount && !upgrade_amount) {
+      return Alert.alert('Missing Data', 'Please enter upgrade amount or switch back to overdue amount.')
     }
 
     setLoading(true)
@@ -207,83 +228,188 @@ export default function AddCaseScreen() {
     setEmiAmount('')
     setUpgradeAmount('')
     setLoanTenureMonths('')
+    setUseUpgradeAmount(false)
   }
 
+  const confirmClear = () => {
+    Alert.alert(
+      'Confirm Clear',
+      'Are you sure you want to clear the form?',
+      [
+        { text: 'No', style: 'cancel' },
+        { text: 'Yes', onPress: clearForm },
+      ]
+    )
+  }
+
+  const assignedToName = agencyUsers.find((u) => u.id === assignedTo)?.name || ''
+
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Surface style={styles.card}>
-          <Title style={styles.title}>Add New Case</Title>
+    <PaperProvider>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.container}>
+          <Surface style={styles.card}>
+            <Title style={styles.title}>Add New Case</Title>
 
-          {/* Loan Type Dropdown */}
-          <Menu
-            visible={loanTypeMenuVisible}
-            onDismiss={() => setLoanTypeMenuVisible(false)}
-            anchor={
-              <TextInput
-                label="Loan Type"
-                value={loanType}
+            {/* Loan Type Dropdown */}
+         
+<View style={{ zIndex: 10 }}>
+  <Menu
+    visible={loanTypeMenuVisible}
+    onDismiss={() => setLoanTypeMenuVisible(false)}
+    anchor={
+      <Button
+        mode="outlined"
+        icon="menu-down"
+        onPress={() => setLoanTypeMenuVisible(true)}
+        style={styles.input}
+        contentStyle={{ justifyContent: 'space-between' }}
+      >
+        {loanType || 'Select Loan Type'}
+      </Button>
+    }
+  >
+    {loanTypes.map((type) => (
+      <Menu.Item
+        key={type}
+        onPress={() => {
+          setLoanType(type)
+          setLoanTypeMenuVisible(false)
+        }}
+        title={type}
+      />
+    ))}
+  </Menu>
+</View>
+
+
+
+
+
+            {/* Assigned To Dropdown */}
+<View style={{ zIndex: 9 }}>
+  <Paragraph style={{ marginTop: 10, marginBottom: 4 }}>Assign To</Paragraph>
+  <Menu
+    visible={assignedToMenuVisible}
+    onDismiss={() => setAssignedToMenuVisible(false)}
+    anchor={
+      <Button
+        mode="outlined"
+        icon="menu-down"
+        onPress={() => setAssignedToMenuVisible(true)}
+        style={styles.input}
+        contentStyle={{ justifyContent: 'space-between' }}
+      >
+        {agencyUsers.find((u) => u.id === assignedTo)?.name || 'Select User'}
+      </Button>
+    }
+  >
+    {agencyUsers.length > 0 ? (
+      agencyUsers.map((u) => (
+        <Menu.Item
+          key={u.id}
+          onPress={() => {
+            setAssignedTo(u.id)
+            setAssignedToMenuVisible(false)
+          }}
+          title={u.name || u.id}
+        />
+      ))
+    ) : (
+      <Menu.Item title="No users found in agency" />
+    )}
+  </Menu>
+</View>
+
+
+            {/* Core required fields */}
+            <TextInput
+              label="Account Name *"
+              value={account_name}
+              onChangeText={setAccountName}
+              mode="outlined"
+              style={styles.input}
+            />
+            <TextInput
+              label="Overdue Amount *"
+              value={overdue_amount}
+              onChangeText={setOverdueAmount}
+              mode="outlined"
+              keyboardType="numeric"
+              style={styles.input}
+            />
+
+            {/* Toggle for Pending Balance Source */}
+            <View style={styles.toggleRow}>
+              <Paragraph style={{ flex: 1 }}>
+                Pending balance source: {useUpgradeAmount ? 'Upgrade amount' : 'Overdue amount'}
+              </Paragraph>
+              <Switch
+                value={useUpgradeAmount}
+                onValueChange={(v) => setUseUpgradeAmount(v)}
+              />
+            </View>
+
+            <TextInput
+              label="Upgrade Amount"
+              value={upgrade_amount}
+              onChangeText={setUpgradeAmount}
+              mode="outlined"
+              keyboardType="numeric"
+              style={styles.input}
+            />
+
+            <TextInput
+              label="Pending Balance (auto)"
+              value={pending_balance}
+              mode="outlined"
+              editable={false}
+              style={styles.input}
+            />
+
+            {/* Remaining fields */}
+            <Divider style={{ marginVertical: 8 }} />
+            <TextInput label="Account Number" value={account_number} onChangeText={setAccountNumber} mode="outlined" style={styles.input} keyboardType="numeric" />
+            <TextInput label="Contact Number" value={contact_number} onChangeText={setContactNumber} mode="outlined" style={styles.input} keyboardType="phone-pad" />
+            <TextInput label="Office Number" value={office_number} onChangeText={setOfficeNumber} mode="outlined" style={styles.input} keyboardType="phone-pad" />
+            <TextInput label="Alternate Number" value={alternate_number} onChangeText={setAlternateNumber} mode="outlined" style={styles.input} keyboardType="phone-pad" />
+            <TextInput label="Customer Name" value={customer_name} onChangeText={setCustomerName} mode="outlined" style={styles.input} />
+            <TextInput label="Customer Address" value={customer_address} onChangeText={setCustomerAddress} mode="outlined" style={styles.input} multiline />
+            <TextInput label="Office Address" value={office_address} onChangeText={setOfficeAddress} mode="outlined" style={styles.input} multiline />
+            <TextInput label="Alternate Address" value={alternate_address} onChangeText={setAlternateAddress} mode="outlined" style={styles.input} multiline />
+            <TextInput label="District" value={district} onChangeText={setDistrict} mode="outlined" style={styles.input} />
+            <TextInput label="Village" value={village} onChangeText={setVillage} mode="outlined" style={styles.input} />
+            <TextInput label="State" value={state} onChangeText={setState} mode="outlined" style={styles.input} />
+            <TextInput label="Branch" value={branch} onChangeText={setBranch} mode="outlined" style={styles.input} />
+            <TextInput label="Bank" value={bank} onChangeText={setBank} mode="outlined" style={styles.input} />
+            <TextInput label="Loan Amount" value={loan_amount} onChangeText={setLoanAmount} mode="outlined" style={styles.input} keyboardType="numeric" />
+            <TextInput label="Monthly EMI" value={monthly_emi} onChangeText={setMonthlyEmi} mode="outlined" style={styles.input} keyboardType="numeric" />
+            <TextInput label="EMI Amount" value={emi_amount} onChangeText={setEmiAmount} mode="outlined" style={styles.input} keyboardType="numeric" />
+            <TextInput label="Overdue Since" value={overdue_since} onChangeText={setOverdueSince} mode="outlined" style={styles.input} />
+            <TextInput label="Loan Tenure (months)" value={loan_tenure_months} onChangeText={setLoanTenureMonths} mode="outlined" style={styles.input} keyboardType="numeric" />
+
+            {/* Actions */}
+            <View style={styles.actionsRow}>
+              <Button
+                mode="contained"
+                onPress={handleSave}
+                loading={loading}
+                style={[styles.button, { backgroundColor: '#2563eb' }]}
+              >
+                {loading ? 'Saving...' : 'Submit'}
+              </Button>
+              <Button
                 mode="outlined"
-                editable={false}
-                right={<TextInput.Icon icon="menu-down" />}
-                onPressIn={() => setLoanTypeMenuVisible(true)}
-                style={styles.input}
-              />
-            }
-          >
-            {loanTypes.map((type) => (
-              <Menu.Item
-                key={type}
-                onPress={() => {
-                  setLoanType(type)
-                  setLoanTypeMenuVisible(false)
-                }}
-                title={type}
-              />
-            ))}
-          </Menu>
-
-          {/* Assigned To Dropdown */}
-          <Paragraph style={{ marginTop: 10, marginBottom: 4 }}>Assign To</Paragraph>
-          <Menu
-            visible={assignedToMenuVisible}
-            onDismiss={() => setAssignedToMenuVisible(false)}
-            anchor={
-              <TextInput
-                label="Assigned To"
-                value={agencyUsers.find((u) => u.id === assignedTo)?.name || ''}
-                mode="outlined"
-                editable={false}
-                right={<TextInput.Icon icon="menu-down" />}
-                onPressIn={() => setAssignedToMenuVisible(true)}
-                style={styles.input}
-              />
-            }
-          >
-            {agencyUsers.map((u) => (
-              <Menu.Item
-                key={u.id}
-                onPress={() => {
-                  setAssignedTo(u.id)
-                  setAssignedToMenuVisible(false)
-                }}
-                title={u.name || u.id}
-              />
-            ))}
-          </Menu>
-
-          {/* Remaining fields */}
-          <TextInput label="Account Name" value={account_name} onChangeText={setAccountName} mode="outlined" style={styles.input} />
-          <TextInput label="Account Number" value={account_number} onChangeText={setAccountNumber} mode="outlined" style={styles.input} />
-          <TextInput label="Contact Number" value={contact_number} onChangeText={setContactNumber} mode="outlined" style={styles.input} />
-          <TextInput label="Overdue Amount" value={overdue_amount} onChangeText={setOverdueAmount} mode="outlined" style={styles.input} />
-
-          <Button mode="contained" onPress={handleSave} loading={loading} style={styles.saveButton}>
-            {loading ? 'Saving...' : 'Save Case'}
-          </Button>
-        </Surface>
-      </ScrollView>
-    </KeyboardAvoidingView>
+                onPress={confirmClear}
+                style={styles.button}
+              >
+                Clear
+              </Button>
+            </View>
+          </Surface>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </PaperProvider>
   )
 }
 
@@ -292,5 +418,18 @@ const styles = StyleSheet.create({
   card: { padding: 16, borderRadius: 10, backgroundColor: 'white', elevation: 3 },
   title: { fontSize: 22, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
   input: { marginVertical: 6 },
-  saveButton: { marginTop: 16 },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 16,
+  },
+  button: {
+    flex: 1,
+  },
 })
