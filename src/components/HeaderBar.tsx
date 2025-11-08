@@ -1,98 +1,61 @@
 import React from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { View, StyleSheet, TouchableOpacity } from 'react-native'
+import { Text } from 'react-native-paper'
+import { Ionicons } from '@expo/vector-icons'
 
 interface HeaderBarProps {
-  onMenuPress?: () => void
-  name?: string
-  branch?: string
-  logoUri?: string
+  onToggleMenu: () => void
+  name: string
+  isDrawerOpen?: boolean
 }
 
-export default function HeaderBar({ onMenuPress, name, branch, logoUri }: HeaderBarProps) {
+export default function HeaderBar({ onToggleMenu, name, isDrawerOpen }: HeaderBarProps) {
   return (
     <View style={styles.header}>
-      {/* Left section: logo & toggle */}
-      <View style={styles.left}>
-        <TouchableOpacity onPress={onMenuPress} style={styles.iconBtn}>
-          <MaterialIcons name="menu" size={26} color="#fff" />
-        </TouchableOpacity>
+      {/* Left: Toggle Icon */}
+      <TouchableOpacity onPress={onToggleMenu} style={styles.menuButton}>
+        <Ionicons
+          name={isDrawerOpen ? 'close' : 'menu'}
+          size={26}
+          color="#fff"
+        />
+      </TouchableOpacity>
 
-        <View style={styles.logoWrap}>
-          {logoUri ? (
-            <Image source={{ uri: logoUri }} style={styles.logoImg} />
-          ) : (
-            <View style={styles.logoBox}>
-              <Text style={styles.logoText}>RP</Text>
-            </View>
-          )}
-        </View>
+      {/* Center: App Title */}
+      <View style={styles.logoContainer}>
+        <Text style={styles.title}>Recovery Portal</Text>
       </View>
 
-      {/* Center: welcome text */}
-      <View style={styles.center}>
-        <Text style={styles.welcomeText}>
-          Welcome{ name ? `, ${name}` : '' }
-        </Text>
-        {branch ? <Text style={styles.branchText}>{branch}</Text> : null}
-      </View>
-
-      {/* Right: placeholder to balance layout */}
-      <View style={{ width: 40 }} />
+      {/* Right: Welcome */}
+      <Text style={styles.welcome}>Hi, {name}</Text>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    height: 56,
     backgroundColor: '#002B5B',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    elevation: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    elevation: 4,
   },
-  left: {
+  menuButton: {
+    padding: 6,
+  },
+  logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  iconBtn: {
-    marginRight: 10,
-  },
-  logoWrap: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoBox: {
-    backgroundColor: '#FFD700',
-    width: 32,
-    height: 32,
-    borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoText: {
-    color: '#002B5B',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  logoImg: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'flex-start',
-    paddingLeft: 10,
-  },
-  welcomeText: {
+  title: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
-  branchText: {
-    color: '#FFD700',
-    fontSize: 12,
+  welcome: {
+    color: '#fff',
+    fontSize: 14,
   },
 })
