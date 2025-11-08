@@ -3,7 +3,6 @@ import React from 'react'
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import * as Linking from 'expo-linking'
-
 import AgencyVerificationScreen from '../screens/AgencyVerification'
 import DashboardScreen from '../screens/Dashboard'
 import AddCaseScreen from '../screens/AddCase'
@@ -13,7 +12,7 @@ import CaseDetails from '../screens/CaseDetails'
 
 export type RootStackParamList = {
   AgencyVerification: undefined
-  Login: { verifiedAgencyCode?: string }
+  Login: { verifiedAgencyCode: string }
   Dashboard: undefined
   AddCase: undefined
   ViewCases: undefined
@@ -37,13 +36,10 @@ const linking = {
 
 export default function AppNavigator() {
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen
-          name="AgencyVerification"
-          component={AgencyVerificationScreen}
-        />
-        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="AgencyVerification" component={AgencyVerificationScreen} />
+w        <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="AddCase" component={AddCaseScreen} />
         <Stack.Screen name="ViewCases" component={ViewCasesScreen} />
