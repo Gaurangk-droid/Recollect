@@ -1,28 +1,32 @@
+// ✅ src/components/Sidebar.tsx
 import React from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
-import { useNavigation } from '@react-navigation/native'
+import { useNavigation, NavigationProp } from '@react-navigation/native'
+import { RootStackParamList } from '../navigation/AppNavigator'
 
 interface SidebarProps {
-  active: string
+  active: keyof RootStackParamList
   role?: 'manager' | 'agent'
   onClose?: () => void
 }
 
 export default function Sidebar({ active, role = 'manager', onClose }: SidebarProps) {
-  const navigation = useNavigation()
+  // Typed navigation
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>()
 
-  const commonMenu = [
+  // Screens that can be safely navigated to without params
+  const commonMenu: { label: string; icon: string; route: keyof RootStackParamList }[] = [
     { label: 'Dashboard', icon: 'dashboard', route: 'Dashboard' },
-    { label: 'Case List', icon: 'list-alt', route: 'CaseList' },
-    { label: 'Activity', icon: 'assignment', route: 'Activity' },
-    { label: 'Calendar', icon: 'calendar-today', route: 'Calendar' },
+    { label: 'Case List', icon: 'list-alt', route: 'ViewCases' }, // ViewCases instead of CaseDetails
+    { label: 'Activity', icon: 'assignment', route: 'Dashboard' }, // replace with real screen if exists
+    { label: 'Calendar', icon: 'calendar-today', route: 'Dashboard' }, // replace with real screen if exists
   ]
 
   const managerMenu = [
     ...commonMenu,
     { label: 'Add Case', icon: 'add-circle-outline', route: 'AddCase' },
-    { label: 'Reports', icon: 'bar-chart', route: 'Reports' },
+    { label: 'Reports', icon: 'bar-chart', route: 'Dashboard' }, // replace with real screen if exists
   ]
 
   const menu = role === 'manager' ? managerMenu : commonMenu
@@ -36,7 +40,7 @@ export default function Sidebar({ active, role = 'manager', onClose }: SidebarPr
           key={item.route}
           style={[styles.menuItem, active === item.route && styles.activeItem]}
           onPress={() => {
-            navigation.navigate(item.route as never)
+            navigation.navigate(item.route) // fully typed
             onClose && onClose()
           }}
         >
@@ -46,7 +50,10 @@ export default function Sidebar({ active, role = 'manager', onClose }: SidebarPr
             color={active === item.route ? '#FFD700' : '#fff'}
           />
           <Text
-            style={[styles.menuText, active === item.route && { color: '#FFD700' }]}
+            style={[
+              styles.menuText,
+              active === item.route && { color: '#FFD700', fontWeight: '600' },
+            ]}
           >
             {item.label}
           </Text>

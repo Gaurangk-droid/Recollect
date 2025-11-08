@@ -30,6 +30,8 @@ const linking = {
       Dashboard: 'dashboard',
       AddCase: 'addcase',
       ViewCases: 'viewcases',
+      CasesDetails: 'CasesDetails',
+
     },
   },
 }
