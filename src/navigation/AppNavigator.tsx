@@ -2,7 +2,7 @@ import React from 'react'
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 
-import AgencyVerificationScreen from '../screens/AgencyVerificationScreen'
+import AgencyVerificationScreen from '../screens/AgencyVerification'
 import LoginScreen from '../screens/LoginScreen'
 import DashboardScreen from '../screens/DashboardScreen'
 import AddCaseScreen from '../screens/AddCaseScreen'  // ✅ add this import
