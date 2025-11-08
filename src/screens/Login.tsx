@@ -22,12 +22,12 @@ import type { RootStackParamList } from '../navigation/AppNavigator'
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Login'>
 
 interface Props {
-  route: { params: { verifiedAgencyCode: string } }
+  route?: { params?: { verifiedAgencyCode?: string } }
 }
 
 export default function LoginScreen({ route }: Props) {
   const navigation = useNavigation<NavProp>()
-  const { verifiedAgencyCode } = route.params
+  const verifiedAgencyCode = route?.params?.verifiedAgencyCode || ''
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
