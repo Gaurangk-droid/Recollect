@@ -17,5 +17,5 @@ export default function App() {
     <PaperProvider theme={theme}>
       <AppNavigator />
     </PaperProvider>
-  )
+)
 }

@@ -7,7 +7,7 @@ import AgencyVerificationScreen from '../screens/AgencyVerification'
 import DashboardScreen from '../screens/Dashboard'
 import AddCaseScreen from '../screens/AddCase'
 import LoginScreen from '../screens/Login'
-import ViewCasesScreen from '../screens/ViewCasesScreen'
+import ViewCasesScreen from '../screens/ViewCases'
 import CaseDetails from '../screens/CaseDetails'
 
 export type RootStackParamList = {
