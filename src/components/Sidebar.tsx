@@ -16,18 +16,20 @@ export default function Sidebar({ active, role = 'manager', onClose }: SidebarPr
   const navigation = useNavigation<NavigationProp<RootStackParamList>>()
 
   // Screens that can be safely navigated to without params
-  const commonMenu: { label: string; icon: string; route: keyof RootStackParamList }[] = [
-    { label: 'Dashboard', icon: 'dashboard', route: 'Dashboard' },
-    { label: 'Case List', icon: 'list-alt', route: 'ViewCases' }, // ViewCases instead of CaseDetails
-    { label: 'Activity', icon: 'assignment', route: 'Dashboard' }, // replace with real screen if exists
-    { label: 'Calendar', icon: 'calendar-today', route: 'Dashboard' }, // replace with real screen if exists
-  ]
+type SafeRoutes = Exclude<keyof RootStackParamList, "Login" | "CaseDetails">
 
-  const managerMenu = [
-    ...commonMenu,
-    { label: 'Add Case', icon: 'add-circle-outline', route: 'AddCase' },
-    { label: 'Reports', icon: 'bar-chart', route: 'Dashboard' }, // replace with real screen if exists
-  ]
+const commonMenu: { label: string; icon: string; route: SafeRoutes }[] = [
+  { label: 'Dashboard', icon: 'dashboard', route: 'Dashboard' },
+  { label: 'Case List', icon: 'list-alt', route: 'ViewCases' },
+  { label: 'Activity', icon: 'assignment', route: 'Dashboard' },
+  { label: 'Calendar', icon: 'calendar-today', route: 'Dashboard' },
+]
+
+const managerMenu: { label: string; icon: string; route: SafeRoutes }[] = [
+  ...commonMenu,
+  { label: 'Add Case', icon: 'add-circle-outline', route: 'AddCase' },
+  { label: 'Reports', icon: 'bar-chart', route: 'Dashboard' },
+]
 
   const menu = role === 'manager' ? managerMenu : commonMenu
 
@@ -35,30 +37,32 @@ export default function Sidebar({ active, role = 'manager', onClose }: SidebarPr
     <View style={styles.sidebar}>
       <Text style={styles.logo}>Recovery Portal</Text>
 
-      {menu.map((item) => (
-        <TouchableOpacity
-          key={item.route}
-          style={[styles.menuItem, active === item.route && styles.activeItem]}
-          onPress={() => {
-            navigation.navigate(item.route) // fully typed
-            onClose && onClose()
-          }}
-        >
-          <MaterialIcons
-            name={item.icon as any}
-            size={22}
-            color={active === item.route ? '#FFD700' : '#fff'}
-          />
-          <Text
-            style={[
-              styles.menuText,
-              active === item.route && { color: '#FFD700', fontWeight: '600' },
-            ]}
-          >
-            {item.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
+{menu.map((item) => (
+  <TouchableOpacity
+    key={item.label} // ✅ unique key
+    style={[styles.menuItem, active === item.route && styles.activeItem]}
+    onPress={() => {
+      navigation.navigate(item.route as any) // ✅ correct
+      onClose && onClose()
+    }}
+  >
+    <MaterialIcons
+      name={item.icon as any}
+      size={22}
+      color={active === item.route ? '#FFD700' : '#fff'}
+    />
+    <Text
+      style={[
+        styles.menuText,
+        active === item.route && { color: '#FFD700', fontWeight: '600' },
+      ]}
+    >
+      {item.label}
+    </Text>
+  </TouchableOpacity>
+))}
+
+
     </View>
   )
 }

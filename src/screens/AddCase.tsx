@@ -220,10 +220,11 @@ export default function AddCase() {
 
           {/* Page Content */}
           <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              style={{ flex: 1 }}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+             keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
           >
-            <ScrollView contentContainerStyle={styles.container}>
+            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.container}>
               <Title style={styles.pageTitle}>➕ Add New Case</Title>
 
               <View

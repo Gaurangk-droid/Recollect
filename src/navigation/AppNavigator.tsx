@@ -38,7 +38,7 @@ const linking = {
 
 export default function AppNavigator() {
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="AgencyVerification" component={AgencyVerificationScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
