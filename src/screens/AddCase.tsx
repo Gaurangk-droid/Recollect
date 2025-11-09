@@ -1,450 +1,319 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useEffect, useState } from "react";
 import {
   View,
   ScrollView,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
+  Text,
   Alert,
-  Dimensions,
-  Animated,
-  TouchableWithoutFeedback,
-  Easing,
-  SafeAreaView,
-  StatusBar,
-} from 'react-native'
-import {
-  Provider as PaperProvider,
-  TextInput,
-  Button,
-  Title,
-  Surface,
-  Paragraph,
-  Switch,
-  Divider,
-} from 'react-native-paper'
-import Sidebar from '../components/Sidebar'
-import HeaderBar from '../components/HeaderBar'
-import { supabase } from '../lib/supabaseClient'
+  Platform,
+  ActivityIndicator,
+} from "react-native";
+import { TextInput, Button, Title, Surface, Paragraph, Divider } from "react-native-paper";
+import { supabase } from "../lib/supabaseClient";
+import { useNavigation } from "@react-navigation/native";
 
-// ---------- constants ----------
-const DRAWER_WIDTH = 250
-const ANIM_DURATION = 220
-const MOBILE_BREAKPOINT = 900
-const HEADER_HEIGHT = 56
-
-const colors = {
-  primary: '#002B5B',
-  accent: '#2563eb',
-  lightBg: '#f6f7fb',
-  white: '#fff',
-  text: '#333',
+// ---------- Helpers ----------
+function generateCaseId(agencyCode = "A") {
+  const y = new Date().getFullYear();
+  const rand = Math.floor(100000 + Math.random() * 900000);
+  return `${agencyCode}-${y}-${rand}`;
 }
 
-// ---------- helper ----------
-function generateCaseId(agencyCode: string, userName: string) {
-  const year = new Date().getFullYear()
-  const rand = Math.floor(100000 + Math.random() * 900000)
-  return `${agencyCode?.slice(0, 3).toUpperCase()}-${userName
-    ?.slice(0, 3)
-    .toUpperCase()}-${year}-${rand}`
-}
-
+// ---------- Main Component ----------
 export default function AddCase() {
-  const isLarge = Dimensions.get('window').width >= MOBILE_BREAKPOINT
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [name, setName] = useState('Manager')
+  const navigation = useNavigation();
 
-  const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current
-  const overlayOpacity = useRef(new Animated.Value(0)).current
+  // ---------- States ----------
+  const [profile, setProfile] = useState<any>(null);
+  const [agencyUsers, setAgencyUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  // ---------- animations ----------
-  const openDrawer = () => {
-    setDrawerOpen(true)
-    Animated.parallel([
-      Animated.timing(translateX, {
-        toValue: 0,
-        duration: ANIM_DURATION,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(overlayOpacity, {
-        toValue: 0.4,
-        duration: ANIM_DURATION,
-        useNativeDriver: true,
-      }),
-    ]).start()
-  }
+  // ---------- Form Fields ----------
+  const [loanType, setLoanType] = useState("");
+  const [accountName, setAccountName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
+  const [alternateNumber, setAlternateNumber] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [officeAddress, setOfficeAddress] = useState("");
+  const [loanAmount, setLoanAmount] = useState("");
+  const [monthlyEmi, setMonthlyEmi] = useState("");
+  const [overdueAmount, setOverdueAmount] = useState("");
+  const [overdueSince, setOverdueSince] = useState("");
+  const [branch, setBranch] = useState("");
+  const [bank, setBank] = useState("");
+  const [loanTenureMonths, setLoanTenureMonths] = useState("");
+  const [upgradeAmount, setUpgradeAmount] = useState("");
+  const [pendingBalance, setPendingBalance] = useState("");
+  const [assignedTo, setAssignedTo] = useState("");
+  const [previewCaseId, setPreviewCaseId] = useState("");
 
-  const closeDrawer = () => {
-    Animated.parallel([
-      Animated.timing(translateX, {
-        toValue: -DRAWER_WIDTH,
-        duration: ANIM_DURATION,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(overlayOpacity, {
-        toValue: 0,
-        duration: ANIM_DURATION,
-        useNativeDriver: true,
-      }),
-    ]).start(() => setDrawerOpen(false))
-  }
-
+  // ---------- Load Profile & Agency Users ----------
   useEffect(() => {
-    if (isLarge) {
-      translateX.setValue(0)
-      overlayOpacity.setValue(0)
-      setDrawerOpen(false)
-    } else {
-      translateX.setValue(-DRAWER_WIDTH)
-      overlayOpacity.setValue(0)
+    const loadProfile = async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const user = auth?.user;
+        if (!user) return setLoading(false);
+
+        const { data: prof } = await supabase
+          .from("users")
+          .select("id, name, role, agency_id")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        setProfile(prof);
+
+        // Generate Case ID preview
+        const code = prof?.agency_id ? String(prof.agency_id).slice(0, 4).toUpperCase() : "A";
+        setPreviewCaseId(generateCaseId(code));
+
+        // Fetch users from same agency
+        if (prof?.agency_id) {
+          const { data: users } = await supabase
+            .from("users")
+            .select("id, name, role")
+            .eq("agency_id", prof.agency_id);
+
+          setAgencyUsers(users || []);
+          setAssignedTo(prof.id);
+        }
+      } catch (err: any) {
+        Alert.alert("Error", err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, []);
+
+  // ---------- Validate ----------
+  const validate = () => {
+    if (!accountName.trim()) {
+      Alert.alert("Validation", "Account name is required");
+      return false;
     }
-  }, [isLarge])
+    if (!overdueAmount || Number(overdueAmount) <= 0) {
+      Alert.alert("Validation", "Overdue amount must be greater than 0");
+      return false;
+    }
+    return true;
+  };
 
-  // -------- form state ----------
-  const [loanType, setLoanType] = useState('')
-  const [accountName, setAccountName] = useState('')
-  const [customerName, setCustomerName] = useState('')
-  const [accountNumber, setAccountNumber] = useState('')
-  const [contactNumber, setContactNumber] = useState('')
-  const [altNumber, setAltNumber] = useState('')
-  const [officeAddress, setOfficeAddress] = useState('')
-  const [custAddress, setCustAddress] = useState('')
-  const [loanAmount, setLoanAmount] = useState('')
-  const [emi, setEmi] = useState('')
-  const [overdueAmt, setOverdueAmt] = useState('')
-  const [overdueSince, setOverdueSince] = useState('')
-  const [upgradeAmt, setUpgradeAmt] = useState('')
-  const [useUpgrade, setUseUpgrade] = useState(false)
-  const [pendingBal, setPendingBal] = useState('')
-  const [tenure, setTenure] = useState('')
-  const [bank, setBank] = useState('')
-  const [branch, setBranch] = useState('')
-  const [assignedTo, setAssignedTo] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    setPendingBal(useUpgrade ? upgradeAmt : overdueAmt)
-  }, [useUpgrade, upgradeAmt, overdueAmt])
-
+  // ---------- Submit ----------
   const handleSubmit = async () => {
-    if (!accountName || !overdueAmt)
-      return Alert.alert('Missing', 'Account name & overdue amount are required.')
+    if (!validate()) return;
+    setSubmitting(true);
 
-    setLoading(true)
     try {
-      // your supabase insert call ...
-      Alert.alert('✅ Success', 'Case created successfully!')
+      const agencyCode = profile?.agency_id
+        ? String(profile.agency_id).slice(0, 4).toUpperCase()
+        : "A";
+      const case_id = generateCaseId(agencyCode);
+
+      const payload = {
+        case_id,
+        agency_id: profile?.agency_id ?? null,
+        assigned_to: assignedTo || profile?.id,
+        created_by: profile?.id,
+        loan_type: loanType || null,
+        account_name: accountName || null,
+        account_number: accountNumber || null,
+        contact_number: contactNumber || null,
+        office_number: null,
+        alternate_number: alternateNumber || null,
+        customer_name: customerName || null,
+        customer_address: customerAddress || null,
+        office_address: officeAddress || null,
+        alternate_address: null,
+        district: null,
+        village: null,
+        state: null,
+        branch: branch || null,
+        bank: bank || null,
+        loan_amount: loanAmount ? Number(loanAmount) : null,
+        monthly_emi: monthlyEmi ? Number(monthlyEmi) : null,
+        overdue_amount: overdueAmount ? Number(overdueAmount) : null,
+        overdue_since: overdueSince || null,
+        pending_balance: pendingBalance ? Number(pendingBalance) : null,
+        emi_amount: null,
+        upgrade_amount: upgradeAmount ? Number(upgradeAmount) : null,
+        loan_tenure_months: loanTenureMonths ? Number(loanTenureMonths) : null,
+        status: "open",
+        is_deleted: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await supabase
+        .from("cases")
+        .insert([payload])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      Alert.alert("✅ Success", `Case created successfully!\nID: ${case_id}`);
+      navigation.navigate("ViewCases");
     } catch (err: any) {
-      Alert.alert('Error', err.message)
+      console.error("Insert failed:", err);
+      Alert.alert("Error", err.message || "Something went wrong while saving the case.");
     } finally {
-      setLoading(false)
+      setSubmitting(false);
     }
-  }
+  };
 
-  const handleClear = () => {
-    setLoanType('')
-    setAccountName('')
-    setCustomerName('')
-    setAccountNumber('')
-    setContactNumber('')
-    setAltNumber('')
-    setOfficeAddress('')
-    setCustAddress('')
-    setLoanAmount('')
-    setEmi('')
-    setOverdueAmt('')
-    setOverdueSince('')
-    setUpgradeAmt('')
-    setPendingBal('')
-    setTenure('')
-    setBank('')
-    setBranch('')
-    setAssignedTo('')
-    setUseUpgrade(false)
-  }
-
-  // ---------- reusable UI ----------
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <Surface style={styles.section}>
-      <Paragraph style={styles.sectionTitle}>{title}</Paragraph>
-      <Divider style={{ marginBottom: 8 }} />
-      {children}
-    </Surface>
-  )
-
-  const Input = (props: any) => (
-    <TextInput mode="outlined" style={styles.input} dense {...props} />
-  )
-
-  // ---------- layout ----------
-  return (
-    <PaperProvider>
-      <View style={styles.appContainer}>
-        {/* Sidebar (desktop only) */}
-        {isLarge && (
-          <View style={styles.sidebarContainer}>
-            <Sidebar active="AddCase" />
-          </View>
-        )}
-
-        <SafeAreaView
-          style={[
-            styles.mainContent,
-            { paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
-          ]}
-        >
-          {/* Header for mobile */}
-          {!isLarge && (
-            <HeaderBar
-              onToggleMenu={() => (drawerOpen ? closeDrawer() : openDrawer())}
-              name={name}
-              isDrawerOpen={drawerOpen}
-            />
-          )}
-
-          {/* Overlay & animated sidebar for mobile */}
-          {!isLarge && drawerOpen && (
-            <>
-              <TouchableWithoutFeedback onPress={closeDrawer}>
-                <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]} />
-              </TouchableWithoutFeedback>
-
-              <Animated.View style={[styles.animatedDrawer, { transform: [{ translateX }] }]}>
-                <Sidebar active="AddCase" onClose={closeDrawer} />
-              </Animated.View>
-            </>
-          )}
-
-          {/* Page Content */}
-          <KeyboardAvoidingView
-              style={{ flex: 1 }}
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-             keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-          >
-            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.container}>
-              <Title style={styles.pageTitle}>➕ Add New Case</Title>
-
-              <View
-                style={[
-                  styles.row,
-                  { flexDirection: isLarge ? 'row' : 'column' },
-                ]}
-              >
-                {/* ----- Column 1: Account & Contact ----- */}
-                <Section title="Account & Contact">
-                  <Input label="Account Name *" value={accountName} onChangeText={setAccountName} />
-                  <Input label="Customer Name" value={customerName} onChangeText={setCustomerName} />
-                  <View style={styles.rowInline}>
-                    <Input
-                      label="Account Number"
-                      value={accountNumber}
-                      onChangeText={setAccountNumber}
-                      style={[styles.input, { flex: 1, marginRight: 6 }]}
-                    />
-                    <Input
-                      label="Loan Type"
-                      value={loanType}
-                      onChangeText={setLoanType}
-                      style={[styles.input, { flex: 1, marginLeft: 6 }]}
-                    />
-                  </View>
-                  <View style={styles.rowInline}>
-                    <Input
-                      label="Contact Number"
-                      value={contactNumber}
-                      onChangeText={setContactNumber}
-                      keyboardType="phone-pad"
-                      style={[styles.input, { flex: 1, marginRight: 6 }]}
-                    />
-                    <Input
-                      label="Alternate Number"
-                      value={altNumber}
-                      onChangeText={setAltNumber}
-                      keyboardType="phone-pad"
-                      style={[styles.input, { flex: 1, marginLeft: 6 }]}
-                    />
-                  </View>
-                  <Input
-                    label="Office Address"
-                    value={officeAddress}
-                    onChangeText={setOfficeAddress}
-                    multiline
-                  />
-                  <Input
-                    label="Customer Address"
-                    value={custAddress}
-                    onChangeText={setCustAddress}
-                    multiline
-                  />
-                </Section>
-
-                {/* ----- Column 2: Financials ----- */}
-                <Section title="Financials">
-                  <View style={styles.rowInline}>
-                    <Input
-                      label="Loan Amount"
-                      value={loanAmount}
-                      onChangeText={setLoanAmount}
-                      keyboardType="numeric"
-                      style={[styles.input, { flex: 1, marginRight: 6 }]}
-                    />
-                    <Input
-                      label="Monthly EMI"
-                      value={emi}
-                      onChangeText={setEmi}
-                      keyboardType="numeric"
-                      style={[styles.input, { flex: 1, marginLeft: 6 }]}
-                    />
-                  </View>
-                  <Input
-                    label="Overdue Amount *"
-                    value={overdueAmt}
-                    onChangeText={setOverdueAmt}
-                    keyboardType="numeric"
-                  />
-                  <Input
-                    label="Overdue Since"
-                    value={overdueSince}
-                    onChangeText={setOverdueSince}
-                  />
-                  <Input
-                    label="Upgrade Amount"
-                    value={upgradeAmt}
-                    onChangeText={setUpgradeAmt}
-                    keyboardType="numeric"
-                  />
-                  <View style={styles.toggleRow}>
-                    <Paragraph style={{ flex: 1 }}>
-                      Pending Source: {useUpgrade ? 'Upgrade' : 'Overdue'}
-                    </Paragraph>
-                    <Switch value={useUpgrade} onValueChange={setUseUpgrade} />
-                  </View>
-                  <Input label="Pending Balance" value={pendingBal} editable={false} />
-                  <Input
-                    label="Loan Tenure (months)"
-                    value={tenure}
-                    onChangeText={setTenure}
-                    keyboardType="numeric"
-                  />
-                </Section>
-
-                {/* ----- Column 3: Bank & Assignment ----- */}
-                <Section title="Bank & Assignment">
-                  <Input label="Bank" value={bank} onChangeText={setBank} />
-                  <Input label="Branch" value={branch} onChangeText={setBranch} />
-                  <Input label="Assign To" value={assignedTo} onChangeText={setAssignedTo} />
-                  <View style={{ marginTop: 20 }}>
-                    <Button
-                      mode="contained"
-                      style={[styles.button, { backgroundColor: colors.accent }]}
-                      onPress={handleSubmit}
-                      loading={loading}
-                    >
-                      {loading ? 'Saving...' : 'Create Case'}
-                    </Button>
-                    <Button
-                      mode="outlined"
-                      style={[styles.button, { marginTop: 8 }]}
-                      onPress={handleClear}
-                    >
-                      Reset
-                    </Button>
-                  </View>
-                </Section>
-              </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
+  // ---------- UI ----------
+  if (loading) {
+    return (
+      <View style={styles.loader}>
+        <ActivityIndicator size="large" color="#003366" />
+        <Text style={{ marginTop: 10 }}>Loading profile...</Text>
       </View>
-    </PaperProvider>
-  )
+    );
+  }
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <Surface style={styles.card}>
+        <Title style={styles.title}>➕ Add New Case</Title>
+        <Text style={styles.subtitle}>Case ID Preview: {previewCaseId}</Text>
+
+        {/* Section 1: Account Info */}
+        <Section title="Account & Contact">
+          <Input label="Account Name *" value={accountName} onChangeText={setAccountName} />
+          <Input label="Customer Name" value={customerName} onChangeText={setCustomerName} />
+          <Input label="Account Number" value={accountNumber} onChangeText={setAccountNumber} />
+          <Input label="Loan Type" value={loanType} onChangeText={setLoanType} />
+          <Input label="Contact Number" value={contactNumber} onChangeText={setContactNumber} />
+          <Input label="Alternate Number" value={alternateNumber} onChangeText={setAlternateNumber} />
+          <Input label="Office Address" value={officeAddress} onChangeText={setOfficeAddress} multiline />
+          <Input label="Customer Address" value={customerAddress} onChangeText={setCustomerAddress} multiline />
+        </Section>
+
+        {/* Section 2: Financials */}
+        <Section title="Financials">
+          <Input label="Loan Amount" value={loanAmount} onChangeText={setLoanAmount} keyboardType="numeric" />
+          <Input label="Monthly EMI" value={monthlyEmi} onChangeText={setMonthlyEmi} keyboardType="numeric" />
+          <Input label="Overdue Amount *" value={overdueAmount} onChangeText={setOverdueAmount} keyboardType="numeric" />
+          <Input label="Overdue Since" value={overdueSince} onChangeText={setOverdueSince} />
+          <Input label="Upgrade Amount" value={upgradeAmount} onChangeText={setUpgradeAmount} keyboardType="numeric" />
+          <Input label="Pending Balance" value={pendingBalance} onChangeText={setPendingBalance} keyboardType="numeric" />
+          <Input label="Loan Tenure (months)" value={loanTenureMonths} onChangeText={setLoanTenureMonths} keyboardType="numeric" />
+        </Section>
+
+        {/* Section 3: Bank & Assignment */}
+        <Section title="Bank & Assignment">
+          <Input label="Bank" value={bank} onChangeText={setBank} />
+          <Input label="Branch" value={branch} onChangeText={setBranch} />
+
+          <Paragraph style={{ marginTop: 8, marginBottom: 4 }}>Assign To:</Paragraph>
+          {agencyUsers.length > 0 ? (
+            agencyUsers.map((u) => (
+              <Button
+                key={u.id}
+                mode={assignedTo === u.id ? "contained" : "outlined"}
+                style={{ marginVertical: 2 }}
+                onPress={() => setAssignedTo(u.id)}
+              >
+                {u.name} ({u.role})
+              </Button>
+            ))
+          ) : (
+            <Text style={{ color: "#666" }}>No agents found</Text>
+          )}
+        </Section>
+
+        <Divider style={{ marginVertical: 12 }} />
+
+        <Button
+          mode="contained"
+          onPress={handleSubmit}
+          loading={submitting}
+          style={styles.submitBtn}
+          buttonColor="#003366"
+        >
+          {submitting ? "Saving..." : "Create Case"}
+        </Button>
+      </Surface>
+    </ScrollView>
+  );
 }
 
-// ---------- styles ----------
+// ---------- Components ----------
+const Section = ({ title, children }: any) => (
+  <Surface style={styles.section}>
+    <Paragraph style={styles.sectionTitle}>{title}</Paragraph>
+    <Divider style={{ marginBottom: 8 }} />
+    {children}
+  </Surface>
+);
+
+const Input = (props: any) => (
+  <TextInput
+    mode="outlined"
+    dense
+    outlineColor="#003366"
+    activeOutlineColor="#003366"
+    style={styles.input}
+    {...props}
+  />
+);
+
+// ---------- Styles ----------
 const styles = StyleSheet.create({
-  appContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: colors.lightBg,
-  },
-  sidebarContainer: {
-    width: DRAWER_WIDTH,
-    backgroundColor: colors.primary,
-  },
-  mainContent: {
-    flex: 1,
-    backgroundColor: colors.lightBg,
-  },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    zIndex: 5,
-  },
-  animatedDrawer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: DRAWER_WIDTH,
-    height: '100%',
-    backgroundColor: colors.primary,
-    elevation: 6,
-    zIndex: 6,
-  },
   container: {
-    flexGrow: 1,
-    backgroundColor: colors.lightBg,
-    paddingVertical: 24,
-    paddingHorizontal: 20,
+    padding: 20,
+    backgroundColor: "#f5f6fa",
   },
-  pageTitle: {
+  loader: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    elevation: 4,
+  },
+  title: {
     fontSize: 22,
-    fontWeight: '700',
-    color: colors.primary,
-    marginBottom: 20,
-    textAlign: 'center',
+    fontWeight: "bold",
+    color: "#002B5B",
+    textAlign: "center",
+    marginBottom: 4,
   },
-  row: {
-    justifyContent: 'space-between',
-  },
-  rowInline: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  subtitle: {
+    textAlign: "center",
+    color: "#666",
+    marginBottom: 16,
   },
   section: {
-    flex: 1,
-    backgroundColor: colors.white,
-    padding: 16,
-    borderRadius: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    marginBottom: Dimensions.get('window').width >= MOBILE_BREAKPOINT ? 0 : 18,
-    marginHorizontal: Dimensions.get('window').width >= MOBILE_BREAKPOINT ? 8 : 0,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    elevation: 1,
   },
   sectionTitle: {
     fontSize: 15,
-    fontWeight: '600',
-    color: colors.primary,
+    fontWeight: "600",
+    color: "#003366",
     marginBottom: 4,
   },
   input: {
     marginBottom: 10,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 8,
-  },
-  button: {
+  submitBtn: {
+    marginTop: 8,
     borderRadius: 8,
   },
-})
+});
