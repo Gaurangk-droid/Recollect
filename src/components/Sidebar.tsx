@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation, NavigationProp } from "@react-navigation/native";
 import { RootStackParamList } from "../navigation/AppNavigator";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface SidebarProps {
   active: keyof RootStackParamList;
@@ -18,7 +19,6 @@ export default function Sidebar({
 }: SidebarProps) {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
-  // fixed sidebar colors (independent from screens)
   const SIDEBAR_ACTIVE = "#f9be3fc8";
   const SIDEBAR_INACTIVE = "#FFFFFF";
 
@@ -40,64 +40,70 @@ export default function Sidebar({
   const menu = role === "manager" ? managerMenu : commonMenu;
 
   return (
-    <View
-      style={[
-        styles.sidebar,
-        Platform.OS === "web" && { isolation: "isolate", zIndex: 9999 },
-      ]}
-    >
-      <Text style={styles.logo}>Recovery Portal</Text>
+    // ✅ SafeAreaView ensures correct top & bottom spacing on Android/iOS
+    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+      <View
+        style={[
+          styles.sidebar,
+          Platform.OS === "web" && { isolation: "isolate", zIndex: 9999 },
+        ]}
+      >
+        <Text style={styles.logo}>Recovery Portal</Text>
 
-      {menu.map((item) => {
-        const isActive = active === item.route;
-        const [hovered, setHovered] = useState(false);
+        {menu.map((item) => {
+          const isActive = active === item.route;
+          const [hovered, setHovered] = useState(false);
 
-        return (
-          <Pressable
-            key={item.label}
-            onPress={() => {
-              navigation.navigate(item.route as any);
-              onClose && onClose();
-            }}
-            onHoverIn={() => Platform.OS === "web" && setHovered(true)}
-            onHoverOut={() => Platform.OS === "web" && setHovered(false)}
-            style={[
-              styles.menuItem,
-              isActive && styles.activeItem,
-              hovered && !isActive && styles.hoverItem,
-            ]}
-          >
-            {/* ✅ Isolated View wrapper prevents color merging from Dashboard SVGs */}
-            <View style={{ isolation: "isolate" }}>
-              <MaterialIcons
-                name={item.icon as any}
-                size={22}
-                color={
-                  isActive
-                    ? "rgba(239, 126, 51, 0.95)" // unique active tint
-                    : "rgba(255, 255, 255, 0.95)"
-                }
-              />
-            </View>
-
-            <Text
+          return (
+            <Pressable
+              key={item.label}
+              onPress={() => {
+                navigation.navigate(item.route as any);
+                onClose && onClose();
+              }}
+              onHoverIn={() => Platform.OS === "web" && setHovered(true)}
+              onHoverOut={() => Platform.OS === "web" && setHovered(false)}
               style={[
-                styles.menuText,
-                { color: isActive ? SIDEBAR_ACTIVE : SIDEBAR_INACTIVE },
-                isActive && { fontWeight: "700" },
+                styles.menuItem,
+                isActive && styles.activeItem,
+                hovered && !isActive && styles.hoverItem,
               ]}
             >
-              {item.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+              <View style={{ isolation: "isolate" }}>
+                <MaterialIcons
+                  name={item.icon as any}
+                  size={22}
+                  color={
+                    isActive
+                      ? "rgba(239, 126, 51, 0.95)"
+                      : "rgba(255, 255, 255, 0.95)"
+                  }
+                />
+              </View>
+
+              <Text
+                style={[
+                  styles.menuText,
+                  { color: isActive ? SIDEBAR_ACTIVE : SIDEBAR_INACTIVE },
+                  isActive && { fontWeight: "700" },
+                ]}
+              >
+                {item.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </SafeAreaView>
   );
 }
 
 // ---------- Styles ----------
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#002B5B", // fills top & bottom behind system bars
+  },
   sidebar: {
     flex: 1,
     backgroundColor: "#002B5B",
