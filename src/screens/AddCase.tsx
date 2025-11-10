@@ -1,4 +1,3 @@
-// ✅ src/screens/AddCase.tsx
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -7,43 +6,103 @@ import {
   Text,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   TouchableOpacity,
 } from "react-native";
 import {
   TextInput,
   Button,
   Title,
-  Surface,
   Paragraph,
   Divider,
-  Menu,
+  Snackbar,
+  Dialog,
+  Portal,
 } from "react-native-paper";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
+import { DatePickerModal } from "react-native-paper-dates";
 
 // ---------- Helpers ----------
 function generateCaseId(agencyName = "AGY", userName = "USR") {
   const year = new Date().getFullYear();
-  const random = Math.floor(100000 + Math.random() * 900000); // 6 digits
+  const random = Math.floor(100000 + Math.random() * 900000);
   const agencyPart = agencyName.slice(0, 3).toUpperCase();
   const userPart = userName.slice(0, 3).toUpperCase();
   return `${agencyPart}-${userPart}-${year}-${random}`;
 }
 
-// ---------- Main Component ----------
+// ---------- Reusable dropdown (Dialog-based) ----------
+function ModalDropdown({
+  label,
+  value,
+  onSelect,
+  options,
+}: {
+  label: string;
+  value: string;
+  onSelect: (v: string) => void;
+  options: { label: string; value: string }[];
+}) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <>
+      <TouchableOpacity onPress={() => setVisible(true)}>
+        <TextInput
+          label={label}
+          mode="outlined"
+          value={value}
+          editable={false}
+          right={<TextInput.Icon icon="menu-down" />}
+          style={styles.input}
+        />
+      </TouchableOpacity>
+
+      <Portal>
+        <Dialog visible={visible} onDismiss={() => setVisible(false)}>
+          <Dialog.Title>{label}</Dialog.Title>
+          <Dialog.Content>
+            {options.map((opt) => (
+              <TouchableOpacity
+                key={opt.value}
+                onPress={() => {
+                  onSelect(opt.value);
+                  setVisible(false);
+                }}
+                style={styles.dropdownItem}
+              >
+                <Paragraph>{opt.label}</Paragraph>
+                <Divider />
+              </TouchableOpacity>
+            ))}
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setVisible(false)}>Close</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+    </>
+  );
+}
+
 export default function AddCase() {
   const navigation = useNavigation();
 
-  // ---------- States ----------
+  // ---------- State ----------
   const [profile, setProfile] = useState<any>(null);
   const [agencyUsers, setAgencyUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [menuVisible, setMenuVisible] = useState(false);
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMsg, setSnackbarMsg] = useState("");
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [confirmSubmitVisible, setConfirmSubmitVisible] = useState(false);
+  const [confirmClearVisible, setConfirmClearVisible] = useState(false);
 
-  // ---------- Form Fields ----------
+  // ---------- Form ----------
   const [loanType, setLoanType] = useState("");
-  const [loanMenuVisible, setLoanMenuVisible] = useState(false);
   const [accountName, setAccountName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [contactNumber, setContactNumber] = useState("");
@@ -61,16 +120,14 @@ export default function AddCase() {
   const [overdueAmount, setOverdueAmount] = useState("");
   const [overdueSince, setOverdueSince] = useState("");
   const [pendingBalance, setPendingBalance] = useState("");
-  const [pendingBalanceSource, setPendingBalanceSource] = useState<
-    "overdue" | "upgrade"
-  >("overdue");
+  const [pendingBalanceSource, setPendingBalanceSource] = useState<"overdue" | "upgrade">("overdue");
   const [upgradeAmount, setUpgradeAmount] = useState("");
   const [loanTenureMonths, setLoanTenureMonths] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [assignedToName, setAssignedToName] = useState("");
   const [previewCaseId, setPreviewCaseId] = useState("");
 
-  // ---------- Load Profile & Agency ----------
+  // ---------- Load Profile ----------
   useEffect(() => {
     const loadProfile = async () => {
       try {
@@ -110,7 +167,7 @@ export default function AddCase() {
           setAssignedToName(prof.name);
         }
       } catch (err: any) {
-        Alert.alert("Error", err.message);
+        Alert.alert("Error", err?.message || "Failed to load profile");
       } finally {
         setLoading(false);
       }
@@ -118,16 +175,14 @@ export default function AddCase() {
     loadProfile();
   }, []);
 
-  // ---------- Auto-update Pending Balance ----------
+  // ---------- Auto Pending Balance ----------
   useEffect(() => {
-    if (pendingBalanceSource === "overdue") {
-      setPendingBalance(overdueAmount);
-    } else if (pendingBalanceSource === "upgrade" && upgradeAmount) {
+    if (pendingBalanceSource === "overdue") setPendingBalance(overdueAmount);
+    else if (pendingBalanceSource === "upgrade" && upgradeAmount)
       setPendingBalance(upgradeAmount);
-    }
   }, [pendingBalanceSource, overdueAmount, upgradeAmount]);
 
-  // ---------- Validation ----------
+  // ---------- Validate ----------
   const validate = () => {
     if (!accountName.trim()) {
       Alert.alert("Validation", "Account name is required");
@@ -140,11 +195,38 @@ export default function AddCase() {
     return true;
   };
 
+  // ---------- Clear ----------
+  const handleClear = () => {
+    setLoanType("");
+    setAccountName("");
+    setAccountNumber("");
+    setContactNumber("");
+    setOfficeNumber("");
+    setCustomerName("");
+    setCustomerAddress("");
+    setOfficeAddress("");
+    setDistrict("");
+    setVillage("");
+    setState("");
+    setBranch("");
+    setBank("");
+    setLoanAmount("");
+    setMonthlyEmi("");
+    setOverdueAmount("");
+    setOverdueSince("");
+    setPendingBalance("");
+    setUpgradeAmount("");
+    setLoanTenureMonths("");
+    setPendingBalanceSource("overdue");
+    setAssignedTo("");
+    setAssignedToName("");
+  };
+
   // ---------- Submit ----------
   const handleSubmit = async () => {
     if (!validate()) return;
-    setSubmitting(true);
 
+    setSubmitting(true);
     try {
       const case_id = generateCaseId(
         profile?.agency_name ?? "AGY",
@@ -175,9 +257,7 @@ export default function AddCase() {
         overdue_since: overdueSince || null,
         pending_balance: pendingBalance ? Number(pendingBalance) : null,
         upgrade_amount: upgradeAmount ? Number(upgradeAmount) : null,
-        loan_tenure_months: loanTenureMonths
-          ? Number(loanTenureMonths)
-          : null,
+        loan_tenure_months: loanTenureMonths ? Number(loanTenureMonths) : null,
         status: "open",
         is_deleted: false,
       };
@@ -185,15 +265,17 @@ export default function AddCase() {
       const { error } = await supabase.from("cases").insert([payload]);
       if (error) throw error;
 
-      Alert.alert("✅ Success", `Case created successfully!\nID: ${case_id}`);
+      setSnackbarMsg("✅ Case created successfully!");
+      setShowSnackbar(true);
+      setTimeout(() => handleClear(), 3000);
     } catch (err: any) {
-      Alert.alert("Error", err.message);
+      Alert.alert("Error", err?.message || "Failed to save case");
     } finally {
       setSubmitting(false);
     }
   };
 
-  // ---------- UI ----------
+  // ---------- Loader ----------
   if (loading) {
     return (
       <View style={styles.loader}>
@@ -203,155 +285,210 @@ export default function AddCase() {
     );
   }
 
+  // ---------- UI ----------
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Surface style={styles.card}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={{ flex: 1 }}
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
         <Title style={styles.title}>➕ Add New Case</Title>
         <Text style={styles.subtitle}>Case ID: {previewCaseId}</Text>
+        <Divider style={{ marginVertical: 10 }} />
 
         {/* Account Info */}
-        <Section title="Account & Customer Info">
-          <Input label="Account Name *" value={accountName} onChangeText={setAccountName} />
-          <Input label="Account Number" value={accountNumber} onChangeText={setAccountNumber} />
-          <Input label="Contact Number" value={contactNumber} onChangeText={setContactNumber} keyboardType="phone-pad" />
-          <Input label="Office Number" value={officeNumber} onChangeText={setOfficeNumber} keyboardType="phone-pad" />
-          <Input label="Customer Name" value={customerName} onChangeText={setCustomerName} />
-          <Input label="Customer Address" value={customerAddress} onChangeText={setCustomerAddress} multiline />
-          <Input label="Office Address" value={officeAddress} onChangeText={setOfficeAddress} multiline />
-          <Input label="District" value={district} onChangeText={setDistrict} />
-          <Input label="Village" value={village} onChangeText={setVillage} />
-          <Input label="State" value={state} onChangeText={setState} />
-        </Section>
+        <Paragraph style={styles.sectionTitle}>Account & Customer Info</Paragraph>
+        <Input label="Account Name *" value={accountName} onChangeText={setAccountName} />
+        <Input label="Account Number" value={accountNumber} onChangeText={setAccountNumber} />
+        <Input label="Contact Number" value={contactNumber} onChangeText={setContactNumber} keyboardType="phone-pad" />
+        <Input label="Office Number" value={officeNumber} onChangeText={setOfficeNumber} keyboardType="phone-pad" />
+        <Input label="Customer Name" value={customerName} onChangeText={setCustomerName} />
+        <Input label="Customer Address" value={customerAddress} onChangeText={setCustomerAddress} multiline />
+        <Input label="Office Address" value={officeAddress} onChangeText={setOfficeAddress} multiline />
+        <Input label="District" value={district} onChangeText={setDistrict} />
+        <Input label="Village" value={village} onChangeText={setVillage} />
+        <Input label="State" value={state} onChangeText={setState} />
 
-        {/* Loan Info */}
-        <Section title="Loan Details">
-          <Menu
-            visible={loanMenuVisible}
-            onDismiss={() => setLoanMenuVisible(false)}
-            anchor={
-              <TouchableOpacity onPress={() => setLoanMenuVisible(true)}>
-                <TextInput
-                  label="Loan Type"
-                  mode="outlined"
-                  value={loanType}
-                  editable={false}
-                  right={<TextInput.Icon icon="menu-down" />}
-                />
-              </TouchableOpacity>
+        <Divider style={{ marginVertical: 10 }} />
+        <Paragraph style={styles.sectionTitle}>Loan Details</Paragraph>
+
+        {/* Loan Type Dropdown */}
+        <ModalDropdown
+          label="Loan Type"
+          value={loanType || ""}
+          onSelect={(v) => setLoanType(v)}
+          options={[
+            { label: "CC", value: "CC" },
+            { label: "Gold Loan", value: "Gold Loan" },
+            { label: "Home Loan", value: "Home Loan" },
+            { label: "Personal Loan", value: "Personal Loan" },
+            { label: "2 Wheeler Loan", value: "2 Wheeler Loan" },
+            { label: "Auto Loan", value: "Auto Loan" },
+          ]}
+        />
+
+        <Input label="Loan Amount" value={loanAmount} onChangeText={setLoanAmount} keyboardType="numeric" />
+        <Input label="Monthly EMI" value={monthlyEmi} onChangeText={setMonthlyEmi} keyboardType="numeric" />
+        <Input label="Overdue Amount *" value={overdueAmount} onChangeText={setOverdueAmount} keyboardType="numeric" />
+
+        {/* Overdue Since: Date Picker */}
+        <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
+          <TextInput
+            label="Overdue Since"
+            mode="outlined"
+            value={overdueSince}
+            editable={false}
+            right={<TextInput.Icon icon="calendar" />}
+            style={styles.input}
+          />
+        </TouchableOpacity>
+
+        <DatePickerModal
+          locale="en"
+          mode="single"
+          visible={datePickerOpen}
+          onDismiss={() => setDatePickerOpen(false)}
+          date={overdueSince ? new Date(overdueSince) : undefined}
+          onConfirm={({ date }) => {
+            if (date) {
+              const formatted = date.toISOString().split("T")[0]; // YYYY-MM-DD
+              setOverdueSince(formatted);
             }
+            setDatePickerOpen(false);
+          }}
+        />
+
+        <Input label="Upgrade Amount" value={upgradeAmount} onChangeText={setUpgradeAmount} keyboardType="numeric" />
+
+        {/* Pending toggle */}
+        <View style={styles.toggleRow}>
+          <Button
+            mode={pendingBalanceSource === "overdue" ? "contained" : "outlined"}
+            onPress={() => {
+              setPendingBalance(overdueAmount);
+              setPendingBalanceSource("overdue");
+            }}
+            style={styles.toggleBtn}
           >
-            {["Home Loan", "Gold Loan", "2 Wheeler Loan", "Auto Loan", "Personal Loan", "CC"].map((type) => (
-              <Menu.Item
-                key={type}
-                onPress={() => {
-                  setLoanType(type);
-                  setLoanMenuVisible(false);
-                }}
-                title={type}
-              />
-            ))}
-          </Menu>
-
-          <Input label="Loan Amount" value={loanAmount} onChangeText={setLoanAmount} keyboardType="numeric" />
-          <Input label="Monthly EMI" value={monthlyEmi} onChangeText={setMonthlyEmi} keyboardType="numeric" />
-          <Input label="Overdue Amount *" value={overdueAmount} onChangeText={setOverdueAmount} keyboardType="numeric" />
-          <Input label="Overdue Since (YYYY-MM-DD)" value={overdueSince} onChangeText={setOverdueSince} />
-          <Input label="Upgrade Amount" value={upgradeAmount} onChangeText={setUpgradeAmount} keyboardType="numeric" />
-
-          <View style={styles.toggleContainer}>
-            <TouchableOpacity
-              style={[styles.toggleOption, pendingBalanceSource === "overdue" && styles.activeToggle]}
-              onPress={() => {
-                setPendingBalance(overdueAmount);
-                setPendingBalanceSource("overdue");
-              }}
-            >
-              <Text style={[styles.toggleText, pendingBalanceSource === "overdue" && styles.activeToggleText]}>
-                Overdue
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.toggleOption, pendingBalanceSource === "upgrade" && styles.activeToggle]}
-              onPress={() => {
-                if (!upgradeAmount || Number(upgradeAmount) <= 0) {
-                  Alert.alert("Missing", "Please enter an Upgrade Amount before selecting.");
-                  return;
-                }
-                setPendingBalance(upgradeAmount);
-                setPendingBalanceSource("upgrade");
-              }}
-            >
-              <Text style={[styles.toggleText, pendingBalanceSource === "upgrade" && styles.activeToggleText]}>
-                Upgrade
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <Input label="Pending Balance" value={pendingBalance} editable={false} />
-          <Input label="Loan Tenure (Months)" value={loanTenureMonths} onChangeText={setLoanTenureMonths} keyboardType="numeric" />
-        </Section>
-
-        {/* Bank & Assignment */}
-        <Section title="Bank & Assignment">
-          <Input label="Bank" value={bank} onChangeText={setBank} />
-          <Input label="Branch" value={branch} onChangeText={setBranch} />
-
-          <Menu
-            visible={menuVisible}
-            onDismiss={() => setMenuVisible(false)}
-            anchor={
-              <TouchableOpacity onPress={() => setMenuVisible(true)}>
-                <TextInput
-                  label="Assign To"
-                  mode="outlined"
-                  value={assignedToName}
-                  editable={false}
-                  right={<TextInput.Icon icon="menu-down" />}
-                />
-              </TouchableOpacity>
-            }
+            Overdue
+          </Button>
+          <Button
+            mode={pendingBalanceSource === "upgrade" ? "contained" : "outlined"}
+            onPress={() => {
+              if (!upgradeAmount || Number(upgradeAmount) <= 0) {
+                Alert.alert("Missing", "Please enter an Upgrade Amount first.");
+                return;
+              }
+              setPendingBalance(upgradeAmount);
+              setPendingBalanceSource("upgrade");
+            }}
+            style={styles.toggleBtn}
           >
-            {agencyUsers.length > 0 ? (
-              agencyUsers.map((u) => (
-                <Menu.Item
-                  key={u.id}
-                  onPress={() => {
-                    setAssignedTo(u.id);
-                    setAssignedToName(`${u.name} (${u.role})`);
-                    setMenuVisible(false);
-                  }}
-                  title={`${u.name} (${u.role})`}
-                />
-              ))
-            ) : (
-              <Menu.Item title="No agents found" />
-            )}
-          </Menu>
-        </Section>
+            Upgrade
+          </Button>
+        </View>
 
-        <Button
-          mode="contained"
-          onPress={handleSubmit}
-          loading={submitting}
-          style={styles.submitBtn}
-          buttonColor="#004AAD"
+        <Input label="Pending Balance" value={pendingBalance} editable={false} />
+        <Input label="Loan Tenure (Months)" value={loanTenureMonths} onChangeText={setLoanTenureMonths} keyboardType="numeric" />
+
+        <Divider style={{ marginVertical: 10 }} />
+        <Paragraph style={styles.sectionTitle}>Bank & Assignment</Paragraph>
+        <Input label="Bank" value={bank} onChangeText={setBank} />
+        <Input label="Branch" value={branch} onChangeText={setBranch} />
+
+        {/* Assign To Dropdown */}
+        <ModalDropdown
+          label="Assign To"
+          value={assignedToName || ""}
+          onSelect={(val) => {
+            setAssignedTo(val);
+            const u = agencyUsers.find((x) => x.id === val);
+            setAssignedToName(u ? `${u.name} (${u.role})` : "");
+          }}
+          options={agencyUsers.map((u) => ({
+            label: `${u.name} (${u.role})`,
+            value: u.id,
+          }))}
+        />
+
+        {/* Buttons */}
+        <View style={styles.btnRow}>
+  <Button
+    mode="contained"
+    onPress={() => setConfirmSubmitVisible(true)}   // ✅ open submit dialog
+    loading={submitting}
+    style={[styles.btn, { backgroundColor: "#004AAD" }]}
+  >
+    {submitting ? "Saving..." : "Create Case"}
+  </Button>
+
+  <Button
+    mode="outlined"
+    textColor="#004AAD"
+    style={styles.btn}
+    onPress={() => setConfirmClearVisible(true)}   // ✅ open clear dialog
+  >
+    Clear
+  </Button>
+</View>
+
+        <Snackbar
+          visible={showSnackbar}
+          onDismiss={() => setShowSnackbar(false)}
+          duration={3000}
+          style={{ backgroundColor: "#004AAD" }}
         >
-          {submitting ? "Saving..." : "Create Case"}
-        </Button>
-      </Surface>
-    </ScrollView>
+          {snackbarMsg}
+        </Snackbar>
+      </ScrollView>
+
+{/* Confirm Submit Dialog */}
+<Dialog visible={confirmSubmitVisible} onDismiss={() => setConfirmSubmitVisible(false)}>
+  <Dialog.Title>Create Case?</Dialog.Title>
+  <Dialog.Content>
+    <Paragraph>Are you sure you want to create this case?</Paragraph>
+  </Dialog.Content>
+  <Dialog.Actions>
+    <Button onPress={() => setConfirmSubmitVisible(false)}>No</Button>
+    <Button
+      onPress={() => {
+        setConfirmSubmitVisible(false);
+        handleSubmit(); // ✅ run submit logic
+      }}
+    >
+      Yes
+    </Button>
+  </Dialog.Actions>
+</Dialog>
+
+{/* Confirm Clear Dialog */}
+<Dialog visible={confirmClearVisible} onDismiss={() => setConfirmClearVisible(false)}>
+  <Dialog.Title>Clear Form?</Dialog.Title>
+  <Dialog.Content>
+    <Paragraph>Are you sure you want to clear?</Paragraph>
+  </Dialog.Content>
+  <Dialog.Actions>
+    <Button onPress={() => setConfirmClearVisible(false)}>No</Button>
+    <Button
+      onPress={() => {
+        setConfirmClearVisible(false);
+        handleClear(); // ✅ run clear logic
+      }}
+    >
+      Yes
+    </Button>
+  </Dialog.Actions>
+</Dialog>
+
+
+    </KeyboardAvoidingView>
   );
 }
 
 // ---------- Components ----------
-const Section = ({ title, children }: any) => (
-  <Surface style={styles.section}>
-    <Paragraph style={styles.sectionTitle}>{title}</Paragraph>
-    <Divider style={{ marginBottom: 8 }} />
-    {children}
-  </Surface>
-);
-
 const Input = (props: any) => (
   <TextInput
     mode="outlined"
@@ -365,25 +502,28 @@ const Input = (props: any) => (
 
 // ---------- Styles ----------
 const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: "#f8faff" },
-  loader: { flex: 1, justifyContent: "center", alignItems: "center" },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 22,
-    maxWidth: 950,
-    alignSelf: "center",
-    elevation: 5,
+  container: {
+    padding: 18,
+    backgroundColor: "#f8faff",
+    flexGrow: 1,
   },
+  loader: { flex: 1, justifyContent: "center", alignItems: "center" },
   title: { fontSize: 24, fontWeight: "bold", color: "#004AAD", textAlign: "center" },
-  subtitle: { textAlign: "center", color: "#666", marginBottom: 18 },
-  section: { backgroundColor: "#fefefe", borderRadius: 10, padding: 14, marginBottom: 18 },
+  subtitle: { textAlign: "center", color: "#666", marginBottom: 12 },
   sectionTitle: { fontSize: 16, fontWeight: "600", color: "#004AAD", marginBottom: 6 },
-  input: { marginBottom: 12, backgroundColor: "#fff" },
-  submitBtn: { marginTop: 12, borderRadius: 8, paddingVertical: 6 },
-  toggleContainer: { flexDirection: "row", borderWidth: 1, borderColor: "#ccc", borderRadius: 10, overflow: "hidden", marginBottom: 10 },
-  toggleOption: { flex: 1, paddingVertical: 10, backgroundColor: "#f5f5f5", alignItems: "center" },
-  activeToggle: { backgroundColor: "#004AAD" },
-  toggleText: { color: "#555", fontWeight: "500" },
-  activeToggleText: { color: "#fff", fontWeight: "bold" },
+  input: { marginBottom: 10, backgroundColor: "#fff" },
+  btnRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 14,
+    gap: 10,
+  },
+  btn: { flex: 1, borderRadius: 6 },
+  toggleRow: {
+    flexDirection: "row",
+    justifyContent: "space-evenly",
+    marginVertical: 10,
+  },
+  toggleBtn: { flex: 1, marginHorizontal: 4 },
+  dropdownItem: { paddingVertical: 8 },
 });
