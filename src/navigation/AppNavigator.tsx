@@ -9,6 +9,7 @@ import AddCaseScreen from '../screens/AddCase'
 import LoginScreen from '../screens/Login'
 import ViewCasesScreen from '../screens/ViewCases'
 import CaseDetails from '../screens/CaseDetails'
+import MainLayout from '../layouts/MainLayout'
 
 export type RootStackParamList = {
   AgencyVerification: undefined
@@ -42,11 +43,14 @@ export default function AppNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="AgencyVerification" component={AgencyVerificationScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Dashboard" component={DashboardScreen} />
-        <Stack.Screen name="AddCase" component={AddCaseScreen} />
-        <Stack.Screen name="ViewCases" component={ViewCasesScreen} />
-        <Stack.Screen name="CaseDetails" component={CaseDetails} />
+      
+  
+        <Stack.Screen name="Dashboard">{() => (<MainLayout><DashboardScreen /></MainLayout>)}</Stack.Screen>
+        <Stack.Screen name="AddCase">{() => (<MainLayout><AddCaseScreen /></MainLayout>)}</Stack.Screen>
+        <Stack.Screen name="ViewCases">{() => (<MainLayout><ViewCasesScreen /></MainLayout>)}</Stack.Screen>
+        <Stack.Screen name="CaseDetails">{() => (<MainLayout><CaseDetails /></MainLayout>)}</Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
   )
 }
+

@@ -1,100 +1,133 @@
 // ✅ src/components/Sidebar.tsx
-import React from 'react'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
-import { useNavigation, NavigationProp } from '@react-navigation/native'
-import { RootStackParamList } from '../navigation/AppNavigator'
+import React, { useState } from "react";
+import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useNavigation, NavigationProp } from "@react-navigation/native";
+import { RootStackParamList } from "../navigation/AppNavigator";
 
 interface SidebarProps {
-  active: keyof RootStackParamList
-  role?: 'manager' | 'agent'
-  onClose?: () => void
+  active: keyof RootStackParamList;
+  role?: "manager" | "agent";
+  onClose?: () => void;
 }
 
-export default function Sidebar({ active, role = 'manager', onClose }: SidebarProps) {
-  // Typed navigation
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>()
+export default function Sidebar({
+  active,
+  role = "manager",
+  onClose,
+}: SidebarProps) {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
-  // Screens that can be safely navigated to without params
-type SafeRoutes = Exclude<keyof RootStackParamList, "Login" | "CaseDetails">
+  // fixed sidebar colors (independent from screens)
+  const SIDEBAR_ACTIVE = "#f9be3fc8";
+  const SIDEBAR_INACTIVE = "#FFFFFF";
 
-const commonMenu: { label: string; icon: string; route: SafeRoutes }[] = [
-  { label: 'Dashboard', icon: 'dashboard', route: 'Dashboard' },
-  { label: 'Case List', icon: 'list-alt', route: 'ViewCases' },
-  { label: 'Activity', icon: 'assignment', route: 'Dashboard' },
-  { label: 'Calendar', icon: 'calendar-today', route: 'Dashboard' },
-]
+  type SafeRoutes = Exclude<keyof RootStackParamList, "Login" | "CaseDetails">;
 
-const managerMenu: { label: string; icon: string; route: SafeRoutes }[] = [
-  ...commonMenu,
-  { label: 'Add Case', icon: 'add-circle-outline', route: 'AddCase' },
-  { label: 'Reports', icon: 'bar-chart', route: 'Dashboard' },
-]
+  const commonMenu: { label: string; icon: string; route: SafeRoutes }[] = [
+    { label: "Dashboard", icon: "dashboard", route: "Dashboard" },
+    { label: "Case List", icon: "list-alt", route: "ViewCases" },
+    { label: "Activity", icon: "assignment", route: "Dashboard" },
+    { label: "Calendar", icon: "calendar-today", route: "Dashboard" },
+  ];
 
-  const menu = role === 'manager' ? managerMenu : commonMenu
+  const managerMenu: { label: string; icon: string; route: SafeRoutes }[] = [
+    ...commonMenu,
+    { label: "Add Case", icon: "add-circle-outline", route: "AddCase" },
+    { label: "Reports", icon: "bar-chart", route: "Dashboard" },
+  ];
+
+  const menu = role === "manager" ? managerMenu : commonMenu;
 
   return (
-    <View style={styles.sidebar}>
-      <Text style={styles.logo}>Recovery Portal</Text>
-
-{menu.map((item) => (
-  <TouchableOpacity
-    key={item.label} // ✅ unique key
-    style={[styles.menuItem, active === item.route && styles.activeItem]}
-    onPress={() => {
-      navigation.navigate(item.route as any) // ✅ correct
-      onClose && onClose()
-    }}
-  >
-    <MaterialIcons
-      name={item.icon as any}
-      size={22}
-      color={active === item.route ? '#FFD700' : '#fff'}
-    />
-    <Text
+    <View
       style={[
-        styles.menuText,
-        active === item.route && { color: '#FFD700', fontWeight: '600' },
+        styles.sidebar,
+        Platform.OS === "web" && { isolation: "isolate", zIndex: 9999 },
       ]}
     >
-      {item.label}
-    </Text>
-  </TouchableOpacity>
-))}
+      <Text style={styles.logo}>Recovery Portal</Text>
 
+      {menu.map((item) => {
+        const isActive = active === item.route;
+        const [hovered, setHovered] = useState(false);
 
+        return (
+          <Pressable
+            key={item.label}
+            onPress={() => {
+              navigation.navigate(item.route as any);
+              onClose && onClose();
+            }}
+            onHoverIn={() => Platform.OS === "web" && setHovered(true)}
+            onHoverOut={() => Platform.OS === "web" && setHovered(false)}
+            style={[
+              styles.menuItem,
+              isActive && styles.activeItem,
+              hovered && !isActive && styles.hoverItem,
+            ]}
+          >
+            {/* ✅ Isolated View wrapper prevents color merging from Dashboard SVGs */}
+            <View style={{ isolation: "isolate" }}>
+              <MaterialIcons
+                name={item.icon as any}
+                size={22}
+                color={
+                  isActive
+                    ? "rgba(239, 126, 51, 0.95)" // unique active tint
+                    : "rgba(255, 255, 255, 0.95)"
+                }
+              />
+            </View>
+
+            <Text
+              style={[
+                styles.menuText,
+                { color: isActive ? SIDEBAR_ACTIVE : SIDEBAR_INACTIVE },
+                isActive && { fontWeight: "700" },
+              ]}
+            >
+              {item.label}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
-  )
+  );
 }
 
+// ---------- Styles ----------
 const styles = StyleSheet.create({
   sidebar: {
     flex: 1,
-    backgroundColor: '#002B5B',
+    backgroundColor: "#002B5B",
     paddingVertical: 30,
     paddingHorizontal: 14,
+    ...(Platform.OS === "web" ? { isolation: "isolate", zIndex: 10 } : {}),
   },
   logo: {
-    color: '#FFD700',
-    fontWeight: 'bold',
+    color: "#FFD700",
+    fontWeight: "bold",
     fontSize: 18,
     marginBottom: 30,
-    textAlign: 'center',
+    textAlign: "center",
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
     marginBottom: 4,
     borderRadius: 6,
     paddingHorizontal: 8,
   },
   activeItem: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: "rgba(255, 215, 0, 0.15)",
+  },
+  hoverItem: {
+    backgroundColor: "rgba(255,255,255,0.1)",
   },
   menuText: {
-    color: '#fff',
     fontSize: 15,
     marginLeft: 12,
   },
-})
+});

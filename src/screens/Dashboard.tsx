@@ -1,282 +1,234 @@
-import React, { useRef, useState, useEffect } from 'react'
+// ✅ src/screens/Dashboard.tsx
+import React from "react";
 import {
   View,
+  ScrollView,
   StyleSheet,
   Dimensions,
-  ScrollView,
-  TouchableWithoutFeedback,
-  Animated,
-  Easing,
-  SafeAreaView,
   Platform,
-  StatusBar,
-} from 'react-native'
-import { Title, Button, Surface, Text } from 'react-native-paper'
-import Sidebar from '../components/Sidebar'
-import HeaderBar from '../components/HeaderBar'
-import { useNavigation } from '@react-navigation/native'
+} from "react-native";
+import { Card, Text, Button } from "react-native-paper";
+import { useNavigation } from "@react-navigation/native";
+import { BarChart, PieChart } from "react-native-gifted-charts";
+import { MotiView } from "moti";
+import { BarChart3, TrendingUp, ClipboardList, Wallet } from "lucide-react-native";
 
-const DRAWER_WIDTH = 250
-const ANIM_DURATION = 220
-const MOBILE_BREAKPOINT = 900
+const { width: screenWidth } = Dimensions.get("window");
+
+// 🎨 New color palette
+const COLORS = {
+  bg: "#0f172a", // deep navy
+  card: "#1e293b",
+  accent: "#38bdf8", // electric blue
+  accent2: "#f43f5e", // coral red
+  accent3: "#10b981", // mint green
+  text: "#f8fafc",
+  subtext: "#94a3b8",
+};
+
+// Mock data
+const dailyCollections = [
+  { value: 12000, label: "Mon" },
+  { value: 18000, label: "Tue" },
+  { value: 9000, label: "Wed" },
+  { value: 21000, label: "Thu" },
+  { value: 12000, label: "Fri" },
+  { value: 26000, label: "Sat" },
+  { value: 22000, label: "Sun" },
+];
+
+const pieData = [
+  { value: 40, color: COLORS.accent, text: "Home" },
+  { value: 25, color: COLORS.accent2, text: "Personal" },
+  { value: 15, color: COLORS.accent3, text: "Auto" },
+  { value: 20, color: "#eab308", text: "Others" },
+];
 
 export default function Dashboard() {
-  const navigation = useNavigation()
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [name, setName] = useState('Manager')
-  const isLargeScreen = Dimensions.get('window').width > MOBILE_BREAKPOINT
-
-  const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current
-  const overlayOpacity = useRef(new Animated.Value(0)).current
-
-  useEffect(() => {
-    if (isLargeScreen) {
-      translateX.setValue(0)
-      overlayOpacity.setValue(0)
-      setDrawerOpen(false)
-    } else {
-      translateX.setValue(-DRAWER_WIDTH)
-      overlayOpacity.setValue(0)
-    }
-  }, [isLargeScreen])
-
-  const openDrawer = () => {
-    setDrawerOpen(true)
-    Animated.parallel([
-      Animated.timing(translateX, {
-        toValue: 0,
-        duration: ANIM_DURATION,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(overlayOpacity, {
-        toValue: 0.4,
-        duration: ANIM_DURATION,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start()
-  }
-
-  const closeDrawer = () => {
-    Animated.parallel([
-      Animated.timing(translateX, {
-        toValue: -DRAWER_WIDTH,
-        duration: ANIM_DURATION,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(overlayOpacity, {
-        toValue: 0,
-        duration: ANIM_DURATION,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start(() => setDrawerOpen(false))
-  }
+  const navigation = useNavigation();
 
   return (
-    <View style={styles.appContainer}>
-      {/* Sidebar (desktop only) */}
-      {isLargeScreen && (
-        <View style={styles.sidebarContainer}>
-          <Sidebar active="Dashboard" />
-        </View>
-      )}
+    <ScrollView
+      style={{ backgroundColor: COLORS.bg }}
+      contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+    >
+      <Text style={styles.title}>ReCollect Insights</Text>
+      <Text style={styles.subtitle}>Your performance at a glance</Text>
 
-      {/* Main Content */}
-      <SafeAreaView
+      {/* KPI Cards */}
+      <View style={styles.kpiRow}>
+        <AnimatedCard icon={<TrendingUp color={COLORS.accent} size={24} />} label="Total Cases" value="124" delta="+8 today" />
+        <AnimatedCard icon={<Wallet color={COLORS.accent2} size={24} />} label="Collections" value="₹1.84L" delta="+12%" />
+        <AnimatedCard icon={<ClipboardList color={COLORS.accent3} size={24} />} label="Pending" value="32" delta="8 urgent" />
+      </View>
+
+      {/* Charts Row */}
+      <View
         style={[
-          styles.mainContent,
-          { paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
+          styles.gridRow,
+          Platform.OS === "web" && screenWidth > 980
+            ? { flexDirection: "row" }
+            : { flexDirection: "column" },
         ]}
       >
-        {/* Header (mobile only) */}
-        {!isLargeScreen && (
-          <HeaderBar
-            onToggleMenu={() => {
-              if (drawerOpen) closeDrawer()
-              else openDrawer()
-            }}
-            name={name}
-            isDrawerOpen={drawerOpen}
+        <Card style={[styles.chartCard, { flex: 2 }]}>
+          <Text style={styles.chartTitle}>Weekly Collections</Text>
+          <BarChart
+            data={dailyCollections}
+            barWidth={28}
+            spacing={18}
+            barBorderRadius={8}
+            frontColor={COLORS.accent}
+            gradientColor={COLORS.accent2}
+            yAxisThickness={0}
+            xAxisThickness={0}
+            isAnimated
+            noOfSections={4}
+            yAxisTextStyle={{ color: COLORS.subtext }}
+            xAxisLabelTextStyle={{ color: COLORS.subtext }}
+            backgroundColor="transparent"
           />
-        )}
+        </Card>
 
-        {/* Body Content */}
-        <View style={styles.bodyContainer}>
-          {/* Drawer + Overlay (mobile only) */}
-          {!isLargeScreen && drawerOpen && (
-            <>
-              <TouchableWithoutFeedback onPress={closeDrawer}>
-                <Animated.View
-                  style={[styles.overlay, { opacity: overlayOpacity }]}
-                />
-              </TouchableWithoutFeedback>
-
-              <Animated.View
-                style={[
-                  styles.animatedDrawer,
-                  { transform: [{ translateX }] },
-                ]}
-              >
-                <Sidebar active="Dashboard" onClose={closeDrawer} />
-              </Animated.View>
-            </>
-          )}
-
-          {/* Dashboard Content */}
-          <ScrollView
-            contentContainerStyle={styles.scrollContainer}
-            showsVerticalScrollIndicator={false}
-          >
-            <Surface style={styles.card}>
-              <Title style={styles.title}>Dashboard Overview</Title>
-              <Text style={styles.subtitle}>Welcome back, {name} 👋</Text>
-
-              <View style={styles.statsRow}>
-                <Surface style={styles.statCard}>
-                  <Text style={styles.statLabel}>Total Cases</Text>
-                  <Text style={styles.statValue}>124</Text>
-                </Surface>
-
-                <Surface style={styles.statCard}>
-                  <Text style={styles.statLabel}>Payments Collected</Text>
-                  <Text style={[styles.statValue, { color: '#0B874B' }]}>
-                    ₹56,000
+        <Card style={[styles.chartCard, { flex: 1 }]}>
+          <Text style={styles.chartTitle}>Case Split</Text>
+          <View style={{ alignItems: "center" }}>
+            <PieChart
+              donut
+              radius={90}
+              innerRadius={55}
+              data={pieData}
+              focusOnPress
+              sectionAutoFocus
+              innerCircleColor={COLORS.card}
+              centerLabelComponent={() => (
+                <View style={{ alignItems: "center" }}>
+                  <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: "700" }}>
+                    124
                   </Text>
-                </Surface>
-              </View>
+                  <Text style={{ color: COLORS.subtext, fontSize: 12 }}>
+                    Total Cases
+                  </Text>
+                </View>
+              )}
+            />
+          </View>
+        </Card>
+      </View>
 
-              <View style={styles.actions}>
-                <Button
-                  mode="contained"
-                  style={styles.button}
-                  onPress={() => navigation.navigate('AddCase' as never)}
-                >
-                  ➕ Add New Case
-                </Button>
-
-                <Button
-                  mode="outlined"
-                  style={styles.button}
-                  onPress={() => navigation.navigate('CaseList' as never)}
-                >
-                  📋 View Case List
-                </Button>
-              </View>
-            </Surface>
-          </ScrollView>
-        </View>
-      </SafeAreaView>
-    </View>
-  )
+      {/* Action Buttons */}
+      <View style={styles.actionsRow}>
+        <Button
+          mode="contained"
+          buttonColor={COLORS.accent}
+          textColor={COLORS.bg}
+          style={styles.actionBtn}
+          onPress={() => navigation.navigate("AddCase" as never)}
+        >
+          + New Case
+        </Button>
+        <Button
+          mode="outlined"
+          textColor={COLORS.text}
+          style={[styles.actionBtn, { borderColor: COLORS.accent }]}
+          onPress={() => navigation.navigate("ViewCases" as never)}
+        >
+          View Cases
+        </Button>
+      </View>
+    </ScrollView>
+  );
 }
 
+// 🎬 Animated Card Component
+function AnimatedCard({
+  icon,
+  label,
+  value,
+  delta,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  delta: string;
+}) {
+  return (
+    <MotiView
+      from={{ opacity: 0, translateY: 20 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{ type: "timing", duration: 600 }}
+      style={styles.kpiCard}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        {icon}
+        <View>
+          <Text style={styles.kpiLabel}>{label}</Text>
+          <Text style={styles.kpiValue}>{value}</Text>
+          <Text style={styles.kpiDelta}>{delta}</Text>
+        </View>
+      </View>
+    </MotiView>
+  );
+}
+
+// ---------- Styles ----------
 const styles = StyleSheet.create({
-  appContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: '#F5F8FC',
-  },
-  sidebarContainer: {
-    width: DRAWER_WIDTH,
-    backgroundColor: '#002B5B',
-  },
-  mainContent: {
-    flex: 1,
-    backgroundColor: '#F5F8FC',
-    flexDirection: 'column',
-  },
-  bodyContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    zIndex: 5,
-  },
-  animatedDrawer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: DRAWER_WIDTH,
-    height: '100%',
-    backgroundColor: '#002B5B',
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 6,
-    zIndex: 6,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 30,
-  },
-  card: {
-    width: '100%',
-    maxWidth: 700,
-    padding: 30,
-    borderRadius: 16,
-    elevation: 4,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-  },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#002B5B',
-    marginBottom: 8,
-    textAlign: 'center',
+    color: "#fff",
+    fontSize: 26,
+    fontWeight: "800",
   },
   subtitle: {
-    fontSize: 16,
-    color: '#555',
+    color: "#94a3b8",
     marginBottom: 20,
-    textAlign: 'center',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 25,
-  },
-  statCard: {
-    flex: 1,
-    marginHorizontal: 5,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#f8f9fc',
-    alignItems: 'center',
-    elevation: 1,
-  },
-  statLabel: {
     fontSize: 14,
-    color: '#777',
   },
-  statValue: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#002B5B',
-    marginTop: 6,
+  kpiRow: {
+    flexDirection:
+      Platform.OS === "web" && Dimensions.get("window").width > 980
+        ? "row"
+        : "column",
+    gap: 14,
+    marginBottom: 20,
   },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  kpiCard: {
+    flex: 1,
+    backgroundColor: "#1e293b",
+    padding: 18,
+    borderRadius: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  kpiLabel: { color: "#cbd5e1", fontSize: 13 },
+  kpiValue: { color: "#f8fafc", fontSize: 26, fontWeight: "800" },
+  kpiDelta: { color: "#38bdf8", fontSize: 12, marginTop: 2 },
+  gridRow: {
+    gap: 16,
+    marginBottom: 24,
+  },
+  chartCard: {
+    backgroundColor: "#1e293b",
+    borderRadius: 14,
+    padding: 16,
+  },
+  chartTitle: {
+    color: "#f8fafc",
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 10,
+  },
+  actionsRow: {
+    flexDirection:
+      Platform.OS === "web" && Dimensions.get("window").width > 600
+        ? "row"
+        : "column",
+    gap: 12,
+    justifyContent: "center",
     marginTop: 20,
   },
-  button: {
-    flex: 1,
-    marginHorizontal: 5,
+  actionBtn: {
     borderRadius: 8,
   },
-})
+});
