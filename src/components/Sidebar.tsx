@@ -18,41 +18,34 @@ export default function Sidebar({
   onClose,
 }: SidebarProps) {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const SIDEBAR_ACTIVE = "#f9be3fc8";
+  const SIDEBAR_ACTIVE = "#FFD700";
   const SIDEBAR_INACTIVE = "#FFFFFF";
 
   type SafeRoutes = Exclude<keyof RootStackParamList, "Login" | "CaseDetails">;
 
   const commonMenu: { label: string; icon: string; route: SafeRoutes }[] = [
-    { label: "Dashboard", icon: "dashboard", route: "Dashboard" },
-    { label: "Case List", icon: "list-alt", route: "ViewCases" },
-    { label: "Activity", icon: "assignment", route: "Dashboard" },
-    { label: "Calendar", icon: "calendar-today", route: "Dashboard" },
-  ];
+  { label: "Dashboard", icon: "dashboard", route: "Dashboard" },
+  { label: "Case List", icon: "list-alt", route: "ViewCases" },
+  { label: "Activity", icon: "assignment", route: "Activity" }, // ✅ unique
+  { label: "Calendar", icon: "calendar-today", route: "Calendar" }, // ✅ unique
+];
 
-  const managerMenu: { label: string; icon: string; route: SafeRoutes }[] = [
-    ...commonMenu,
-    { label: "Add Case", icon: "add-circle-outline", route: "AddCase" },
-    { label: "Reports", icon: "bar-chart", route: "Dashboard" },
-  ];
+const managerMenu: { label: string; icon: string; route: SafeRoutes }[] = [
+  ...commonMenu,
+  { label: "Add Case", icon: "add-circle-outline", route: "AddCase" },
+  { label: "Reports", icon: "bar-chart", route: "Reports" }, // ✅ unique
+];
 
   const menu = role === "manager" ? managerMenu : commonMenu;
 
   return (
-    // ✅ SafeAreaView ensures correct top & bottom spacing on Android/iOS
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-      <View
-        style={[
-          styles.sidebar,
-          Platform.OS === "web" && { isolation: "isolate", zIndex: 9999 },
-        ]}
-      >
-        <Text style={styles.logo}>Recovery Portal</Text>
-
-        {menu.map((item) => {
+      <View style={styles.sidebar}>
+        {menu.map((item, index) => {
           const isActive = active === item.route;
-          const [hovered, setHovered] = useState(false);
+          const isHovered = hoveredIndex === index && !isActive;
 
           return (
             <Pressable
@@ -61,31 +54,25 @@ export default function Sidebar({
                 navigation.navigate(item.route as any);
                 onClose && onClose();
               }}
-              onHoverIn={() => Platform.OS === "web" && setHovered(true)}
-              onHoverOut={() => Platform.OS === "web" && setHovered(false)}
+              onHoverIn={() => Platform.OS === "web" && setHoveredIndex(index)}
+              onHoverOut={() => Platform.OS === "web" && setHoveredIndex(null)}
               style={[
                 styles.menuItem,
                 isActive && styles.activeItem,
-                hovered && !isActive && styles.hoverItem,
+                isHovered && styles.hoverItem,
               ]}
             >
-              <View style={{ isolation: "isolate" }}>
-                <MaterialIcons
-                  name={item.icon as any}
-                  size={22}
-                  color={
-                    isActive
-                      ? "rgba(239, 126, 51, 0.95)"
-                      : "rgba(255, 255, 255, 0.95)"
-                  }
-                />
-              </View>
+              <MaterialIcons
+                name={item.icon as any}
+                size={22}
+                color={isActive ? SIDEBAR_ACTIVE : SIDEBAR_INACTIVE}
+              />
 
               <Text
                 style={[
                   styles.menuText,
                   { color: isActive ? SIDEBAR_ACTIVE : SIDEBAR_INACTIVE },
-                  isActive && { fontWeight: "700" },
+                  isActive && styles.menuTextActive,
                 ]}
               >
                 {item.label}
@@ -102,14 +89,13 @@ export default function Sidebar({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#002B5B", // fills top & bottom behind system bars
+    backgroundColor: "#002B5B",
   },
   sidebar: {
     flex: 1,
     backgroundColor: "#002B5B",
     paddingVertical: 30,
     paddingHorizontal: 14,
-    ...(Platform.OS === "web" ? { isolation: "isolate", zIndex: 10 } : {}),
   },
   logo: {
     color: "#FFD700",
@@ -135,5 +121,9 @@ const styles = StyleSheet.create({
   menuText: {
     fontSize: 15,
     marginLeft: 12,
+    color: "#FFFFFF",
+  },
+  menuTextActive: {
+    fontWeight: "700",
   },
 });

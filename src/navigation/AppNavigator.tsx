@@ -17,6 +17,9 @@ export type RootStackParamList = {
   Dashboard: undefined
   AddCase: undefined
   ViewCases: undefined
+  Activity: undefined;
+  Calendar: undefined;
+  Reports: undefined;
   CaseDetails: { caseData: any }
 }
 

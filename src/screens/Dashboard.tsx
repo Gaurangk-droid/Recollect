@@ -15,15 +15,17 @@ import { BarChart3, TrendingUp, ClipboardList, Wallet } from "lucide-react-nativ
 
 const { width: screenWidth } = Dimensions.get("window");
 
-// 🎨 New color palette
+// 🌈 Professional Color Palette
 const COLORS = {
-  bg: "#0f172a", // deep navy
-  card: "#1e293b",
-  accent: "#38bdf8", // electric blue
-  accent2: "#f43f5e", // coral red
-  accent3: "#10b981", // mint green
-  text: "#f8fafc",
-  subtext: "#94a3b8",
+  bg: "#0B1120", // modern dark navy background
+  card: "#1E293B", // card surface
+  cardAlt: "#27364E",
+  accent: "#3B82F6", // soft electric blue
+  accent2: "#F59E0B", // amber highlight
+  accent3: "#10B981", // mint success
+  text: "#F9FAFB", // near-white text
+  subtext: "#9CA3AF", // muted text
+  border: "rgba(255,255,255,0.08)",
 };
 
 // Mock data
@@ -41,7 +43,7 @@ const pieData = [
   { value: 40, color: COLORS.accent, text: "Home" },
   { value: 25, color: COLORS.accent2, text: "Personal" },
   { value: 15, color: COLORS.accent3, text: "Auto" },
-  { value: 20, color: "#eab308", text: "Others" },
+  { value: 20, color: "#E11D48", text: "Others" },
 ];
 
 export default function Dashboard() {
@@ -52,14 +54,34 @@ export default function Dashboard() {
       style={{ backgroundColor: COLORS.bg }}
       contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
     >
-      <Text style={styles.title}>ReCollect Insights</Text>
-      <Text style={styles.subtitle}>Your performance at a glance</Text>
+      <View style={styles.headerContainer}>
+        <Text style={styles.title}>ReCollect Dashboard</Text>
+        <Text style={styles.subtitle}>Overview of your collections & cases</Text>
+      </View>
 
       {/* KPI Cards */}
       <View style={styles.kpiRow}>
-        <AnimatedCard icon={<TrendingUp color={COLORS.accent} size={24} />} label="Total Cases" value="124" delta="+8 today" />
-        <AnimatedCard icon={<Wallet color={COLORS.accent2} size={24} />} label="Collections" value="₹1.84L" delta="+12%" />
-        <AnimatedCard icon={<ClipboardList color={COLORS.accent3} size={24} />} label="Pending" value="32" delta="8 urgent" />
+        <AnimatedCard
+          icon={<TrendingUp color={COLORS.accent} size={24} />}
+          label="Total Cases"
+          value="124"
+          delta="+8 today"
+          deltaColor={COLORS.accent}
+        />
+        <AnimatedCard
+          icon={<Wallet color={COLORS.accent2} size={24} />}
+          label="Collections"
+          value="₹1.84L"
+          delta="+12%"
+          deltaColor={COLORS.accent2}
+        />
+        <AnimatedCard
+          icon={<ClipboardList color={COLORS.accent3} size={24} />}
+          label="Pending"
+          value="32"
+          delta="8 urgent"
+          deltaColor={COLORS.accent3}
+        />
       </View>
 
       {/* Charts Row */}
@@ -75,9 +97,9 @@ export default function Dashboard() {
           <Text style={styles.chartTitle}>Weekly Collections</Text>
           <BarChart
             data={dailyCollections}
-            barWidth={28}
-            spacing={18}
-            barBorderRadius={8}
+            barWidth={26}
+            spacing={16}
+            barBorderRadius={6}
             frontColor={COLORS.accent}
             gradientColor={COLORS.accent2}
             yAxisThickness={0}
@@ -91,7 +113,7 @@ export default function Dashboard() {
         </Card>
 
         <Card style={[styles.chartCard, { flex: 1 }]}>
-          <Text style={styles.chartTitle}>Case Split</Text>
+          <Text style={styles.chartTitle}>Case Distribution</Text>
           <View style={{ alignItems: "center" }}>
             <PieChart
               donut
@@ -125,7 +147,7 @@ export default function Dashboard() {
           style={styles.actionBtn}
           onPress={() => navigation.navigate("AddCase" as never)}
         >
-          + New Case
+          + Add New Case
         </Button>
         <Button
           mode="outlined"
@@ -133,24 +155,26 @@ export default function Dashboard() {
           style={[styles.actionBtn, { borderColor: COLORS.accent }]}
           onPress={() => navigation.navigate("ViewCases" as never)}
         >
-          View Cases
+          View All Cases
         </Button>
       </View>
     </ScrollView>
   );
 }
 
-// 🎬 Animated Card Component
+// 🎬 Animated KPI Card Component
 function AnimatedCard({
   icon,
   label,
   value,
   delta,
+  deltaColor,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   delta: string;
+  deltaColor: string;
 }) {
   return (
     <MotiView
@@ -159,28 +183,27 @@ function AnimatedCard({
       transition={{ type: "timing", duration: 600 }}
       style={styles.kpiCard}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        {icon}
-        <View>
-          <Text style={styles.kpiLabel}>{label}</Text>
-          <Text style={styles.kpiValue}>{value}</Text>
-          <Text style={styles.kpiDelta}>{delta}</Text>
-        </View>
-      </View>
+      <View style={styles.kpiIcon}>{icon}</View>
+      <Text style={styles.kpiLabel}>{label}</Text>
+      <Text style={styles.kpiValue}>{value}</Text>
+      <Text style={[styles.kpiDelta, { color: deltaColor }]}>{delta}</Text>
     </MotiView>
   );
 }
 
 // ---------- Styles ----------
 const styles = StyleSheet.create({
+  headerContainer: {
+    marginBottom: 20,
+  },
   title: {
-    color: "#fff",
+    color: COLORS.text,
     fontSize: 26,
     fontWeight: "800",
+    marginBottom: 4,
   },
   subtitle: {
-    color: "#94a3b8",
-    marginBottom: 20,
+    color: COLORS.subtext,
     fontSize: 14,
   },
   kpiRow: {
@@ -189,32 +212,44 @@ const styles = StyleSheet.create({
         ? "row"
         : "column",
     gap: 14,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   kpiCard: {
     flex: 1,
-    backgroundColor: "#1e293b",
-    padding: 18,
-    borderRadius: 14,
+    backgroundColor: COLORS.card,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    borderRadius: 16,
     shadowColor: "#000",
     shadowOpacity: 0.25,
     shadowRadius: 6,
-    elevation: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: "flex-start",
   },
-  kpiLabel: { color: "#cbd5e1", fontSize: 13 },
-  kpiValue: { color: "#f8fafc", fontSize: 26, fontWeight: "800" },
-  kpiDelta: { color: "#38bdf8", fontSize: 12, marginTop: 2 },
+  kpiIcon: {
+    backgroundColor: COLORS.cardAlt,
+    padding: 8,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  kpiLabel: { color: COLORS.subtext, fontSize: 13, marginBottom: 2 },
+  kpiValue: { color: COLORS.text, fontSize: 24, fontWeight: "800" },
+  kpiDelta: { fontSize: 12, marginTop: 2 },
   gridRow: {
     gap: 16,
-    marginBottom: 24,
+    marginBottom: 30,
   },
   chartCard: {
-    backgroundColor: "#1e293b",
-    borderRadius: 14,
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   chartTitle: {
-    color: "#f8fafc",
+    color: COLORS.text,
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 10,

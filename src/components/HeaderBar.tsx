@@ -1,25 +1,33 @@
-import React from 'react'
-import { View, StyleSheet, TouchableOpacity } from 'react-native'
-import { Text } from 'react-native-paper'
-import { Ionicons } from '@expo/vector-icons'
+import React from "react";
+import { View, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
+import { Text } from "react-native-paper";
+import { Ionicons } from "@expo/vector-icons";
 
 interface HeaderBarProps {
-  onToggleMenu: () => void
-  name: string
-  isDrawerOpen?: boolean
+  onToggleMenu: () => void;
+  name: string;
+  isDrawerOpen?: boolean;
 }
 
-export default function HeaderBar({ onToggleMenu, name, isDrawerOpen }: HeaderBarProps) {
+export default function HeaderBar({
+  onToggleMenu,
+  name,
+  isDrawerOpen,
+}: HeaderBarProps) {
+  const isLargeScreen = Dimensions.get("window").width > 900;
+
   return (
     <View style={styles.header}>
-      {/* Left: Toggle Icon */}
-      <TouchableOpacity onPress={onToggleMenu} style={styles.menuButton}>
-        <Ionicons
-          name={isDrawerOpen ? 'close' : 'menu'}
-          size={26}
-          color="#fff"
-        />
-      </TouchableOpacity>
+      {/* Left: Toggle Icon — only visible on mobile/tablet */}
+      {!isLargeScreen && (
+        <TouchableOpacity onPress={onToggleMenu} style={styles.menuButton}>
+          <Ionicons
+            name={isDrawerOpen ? "close" : "menu"}
+            size={26}
+            color="#fff"
+          />
+        </TouchableOpacity>
+      )}
 
       {/* Center: App Title */}
       <View style={styles.logoContainer}>
@@ -29,16 +37,16 @@ export default function HeaderBar({ onToggleMenu, name, isDrawerOpen }: HeaderBa
       {/* Right: Welcome */}
       <Text style={styles.welcome}>Hi, {name}</Text>
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
   header: {
     height: 56,
-    backgroundColor: '#002B5B',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    backgroundColor: "#002B5B",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 12,
     elevation: 4,
   },
@@ -46,16 +54,16 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   title: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   welcome: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
   },
-})
+});
