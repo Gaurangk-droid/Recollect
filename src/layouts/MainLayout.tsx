@@ -14,6 +14,7 @@ import HeaderBar from "../components/HeaderBar";
 import { SafeAreaView } from "react-native";
 import { useRoute } from "@react-navigation/native";
 import { useHeaderHeight } from "@react-navigation/elements";
+import { COLORS } from "../styles/theme";
 
 const DRAWER_WIDTH = 250;
 const ANIM_DURATION = 220;
@@ -163,14 +164,13 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#F5F8FC",
+    backgroundColor: COLORS.background,
   },
   container: {
     flex: 1,
   },
   headerWrapper: {
-    backgroundColor: "#FFF",
-    // ensure header visually sits above mobile drawer
+    backgroundColor: COLORS.card,
     elevation: 10,
     shadowOpacity: 0.05,
   },
@@ -180,30 +180,34 @@ const styles = StyleSheet.create({
   },
   sidebarContainer: {
     width: DRAWER_WIDTH,
-    backgroundColor: "#002B5B",
+    backgroundColor: COLORS.primaryLight,
+    borderRightWidth: 1,
+    borderRightColor: COLORS.border,
   },
   pageContent: {
     flex: 1,
-    backgroundColor: "#F5F8FC",
+    backgroundColor: COLORS.background,
   },
   overlay: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: COLORS.overlay,
     zIndex: 15,
   },
   animatedDrawer: {
     position: "absolute",
     left: 0,
     width: DRAWER_WIDTH,
-    backgroundColor: "#002B5B",
+    backgroundColor: COLORS.primaryLight,
     zIndex: 16,
     elevation: 8,
     shadowColor: "#000",
     shadowOffset: { width: 2, height: 0 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
+    borderRightWidth: 1,
+    borderRightColor: COLORS.border,
   },
 });

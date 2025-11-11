@@ -1,10 +1,10 @@
-// ✅ src/components/Sidebar.tsx
 import React, { useState } from "react";
 import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation, NavigationProp } from "@react-navigation/native";
 import { RootStackParamList } from "../navigation/AppNavigator";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { COLORS } from "../styles/theme";
 
 interface SidebarProps {
   active: keyof RootStackParamList;
@@ -20,23 +20,23 @@ export default function Sidebar({
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const SIDEBAR_ACTIVE = "#FFD700";
-  const SIDEBAR_INACTIVE = "#FFFFFF";
+  const SIDEBAR_ACTIVE = COLORS.accent;
+  const SIDEBAR_INACTIVE = COLORS.textSecondary;
 
   type SafeRoutes = Exclude<keyof RootStackParamList, "Login" | "CaseDetails">;
 
   const commonMenu: { label: string; icon: string; route: SafeRoutes }[] = [
-  { label: "Dashboard", icon: "dashboard", route: "Dashboard" },
-  { label: "Case List", icon: "list-alt", route: "ViewCases" },
-  { label: "Activity", icon: "assignment", route: "Activity" }, // ✅ unique
-  { label: "Calendar", icon: "calendar-today", route: "Calendar" }, // ✅ unique
-];
+    { label: "Dashboard", icon: "dashboard", route: "Dashboard" },
+    { label: "Case List", icon: "list-alt", route: "ViewCases" },
+    { label: "Activity", icon: "assignment", route: "Activity" },
+    { label: "Calendar", icon: "calendar-today", route: "Calendar" },
+  ];
 
-const managerMenu: { label: string; icon: string; route: SafeRoutes }[] = [
-  ...commonMenu,
-  { label: "Add Case", icon: "add-circle-outline", route: "AddCase" },
-  { label: "Reports", icon: "bar-chart", route: "Reports" }, // ✅ unique
-];
+  const managerMenu: { label: string; icon: string; route: SafeRoutes }[] = [
+    ...commonMenu,
+    { label: "Add Case", icon: "add-circle-outline", route: "AddCase" },
+    { label: "Reports", icon: "bar-chart", route: "Reports" },
+  ];
 
   const menu = role === "manager" ? managerMenu : commonMenu;
 
@@ -89,16 +89,18 @@ const managerMenu: { label: string; icon: string; route: SafeRoutes }[] = [
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#002B5B",
+    backgroundColor: COLORS.primaryLight, // ✅ soft blue background
   },
   sidebar: {
     flex: 1,
-    backgroundColor: "#002B5B",
+    backgroundColor: COLORS.primaryLight, // ✅ subtle color instead of white
     paddingVertical: 30,
     paddingHorizontal: 14,
+    borderRightWidth: 1,
+    borderRightColor: COLORS.border,
   },
   logo: {
-    color: "#FFD700",
+    color: COLORS.accent,
     fontWeight: "bold",
     fontSize: 18,
     marginBottom: 30,
@@ -109,21 +111,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
     marginBottom: 4,
-    borderRadius: 6,
-    paddingHorizontal: 8,
+    borderRadius: 8,
+    paddingHorizontal: 10,
   },
   activeItem: {
-    backgroundColor: "rgba(255, 215, 0, 0.15)",
+    backgroundColor: COLORS.card, // ✅ white background for active
+    shadowColor: COLORS.border,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 1,
   },
   hoverItem: {
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "#EEF6FF", // ✅ slightly lighter hover shade
   },
   menuText: {
     fontSize: 15,
     marginLeft: 12,
-    color: "#FFFFFF",
+    color: COLORS.textSecondary,
   },
   menuTextActive: {
     fontWeight: "700",
+    color: COLORS.accent,
   },
 });

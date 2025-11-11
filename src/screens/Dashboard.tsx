@@ -14,19 +14,7 @@ import { MotiView } from "moti";
 import { BarChart3, TrendingUp, ClipboardList, Wallet } from "lucide-react-native";
 
 const { width: screenWidth } = Dimensions.get("window");
-
-// 🌈 Professional Color Palette
-const COLORS = {
-  bg: "#0B1120", // modern dark navy background
-  card: "#1E293B", // card surface
-  cardAlt: "#27364E",
-  accent: "#3B82F6", // soft electric blue
-  accent2: "#F59E0B", // amber highlight
-  accent3: "#10B981", // mint success
-  text: "#F9FAFB", // near-white text
-  subtext: "#9CA3AF", // muted text
-  border: "rgba(255,255,255,0.08)",
-};
+import { COLORS } from "../styles/theme";
 
 // Mock data
 const dailyCollections = [
@@ -43,7 +31,7 @@ const pieData = [
   { value: 40, color: COLORS.accent, text: "Home" },
   { value: 25, color: COLORS.accent2, text: "Personal" },
   { value: 15, color: COLORS.accent3, text: "Auto" },
-  { value: 20, color: "#E11D48", text: "Others" },
+  { value: 20, color: "#F59E0B", text: "Others" },
 ];
 
 export default function Dashboard() {
@@ -56,7 +44,9 @@ export default function Dashboard() {
     >
       <View style={styles.headerContainer}>
         <Text style={styles.title}>ReCollect Dashboard</Text>
-        <Text style={styles.subtitle}>Overview of your collections & cases</Text>
+        <Text style={styles.subtitle}>
+          Overview of your collections & cases
+        </Text>
       </View>
 
       {/* KPI Cards */}
@@ -125,10 +115,21 @@ export default function Dashboard() {
               innerCircleColor={COLORS.card}
               centerLabelComponent={() => (
                 <View style={{ alignItems: "center" }}>
-                  <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: "700" }}>
+                  <Text
+                    style={{
+                      color: COLORS.text,
+                      fontSize: 18,
+                      fontWeight: "700",
+                    }}
+                  >
                     124
                   </Text>
-                  <Text style={{ color: COLORS.subtext, fontSize: 12 }}>
+                  <Text
+                    style={{
+                      color: COLORS.subtext,
+                      fontSize: 12,
+                    }}
+                  >
                     Total Cases
                   </Text>
                 </View>
@@ -143,7 +144,7 @@ export default function Dashboard() {
         <Button
           mode="contained"
           buttonColor={COLORS.accent}
-          textColor={COLORS.bg}
+          textColor="#fff"
           style={styles.actionBtn}
           onPress={() => navigation.navigate("AddCase" as never)}
         >
@@ -151,7 +152,7 @@ export default function Dashboard() {
         </Button>
         <Button
           mode="outlined"
-          textColor={COLORS.text}
+          textColor={COLORS.accent}
           style={[styles.actionBtn, { borderColor: COLORS.accent }]}
           onPress={() => navigation.navigate("ViewCases" as never)}
         >
@@ -221,9 +222,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 16,
     shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
     borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: "flex-start",
