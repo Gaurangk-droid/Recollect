@@ -312,7 +312,9 @@ export default function ViewCasesScreen() {
     ({ item }: { item: Case }) => (
       <TouchableOpacity
         activeOpacity={0.9}
-        onPress={() => navigation.navigate("CaseDetails", { caseData: item })}
+        onPress={() =>
+            navigation.navigate("CaseDetails", { caseId: String(item.id) })
+          }
         style={styles.touchWrap}
       >
         <Card style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>

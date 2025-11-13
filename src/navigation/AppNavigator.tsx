@@ -20,7 +20,7 @@ export type RootStackParamList = {
   Activity: undefined;
   Calendar: undefined;
   Reports: undefined;
-  CaseDetails: { caseData: any }
+  CaseDetails: { caseId: string }
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -34,8 +34,7 @@ const linking = {
       Dashboard: 'dashboard',
       AddCase: 'addcase',
       ViewCases: 'viewcases',
-      CasesDetails: 'CasesDetails',
-
+      CaseDetails: 'viewcases/id/:caseId', // ✅ dynamic route
     },
   },
 }

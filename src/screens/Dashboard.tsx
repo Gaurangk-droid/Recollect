@@ -1,270 +1,174 @@
 // ✅ src/screens/Dashboard.tsx
-import React from "react";
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Dimensions,
-  Platform,
-} from "react-native";
-import { Card, Text, Button } from "react-native-paper";
-import { useNavigation } from "@react-navigation/native";
-import { BarChart, PieChart } from "react-native-gifted-charts";
-import { MotiView } from "moti";
-import { BarChart3, TrendingUp, ClipboardList, Wallet } from "lucide-react-native";
+import React, { useEffect, useState } from 'react'
+import { View, ScrollView, StyleSheet } from 'react-native'
+import { Text, Title, Surface, ActivityIndicator, Button } from 'react-native-paper'
+import { PieChart, BarChart } from 'react-native-gifted-charts'
+import { supabase } from '../lib/supabaseClient'
+import { useNavigation } from '@react-navigation/native'
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import type { RootStackParamList } from '../navigation/AppNavigator'
 
-const { width: screenWidth } = Dimensions.get("window");
-import { COLORS } from "../styles/theme";
+type NavProp = NativeStackNavigationProp<RootStackParamList, 'Dashboard'>
 
-// Mock data
-const dailyCollections = [
-  { value: 12000, label: "Mon" },
-  { value: 18000, label: "Tue" },
-  { value: 9000, label: "Wed" },
-  { value: 21000, label: "Thu" },
-  { value: 12000, label: "Fri" },
-  { value: 26000, label: "Sat" },
-  { value: 22000, label: "Sun" },
-];
+export default function DashboardScreen() {
+  const navigation = useNavigation<NavProp>()
+  const [loading, setLoading] = useState(true)
+  const [caseCount, setCaseCount] = useState(0)
+  const [openCases, setOpenCases] = useState(0)
+  const [closedCases, setClosedCases] = useState(0)
 
-const pieData = [
-  { value: 40, color: COLORS.accent, text: "Home" },
-  { value: 25, color: COLORS.accent2, text: "Personal" },
-  { value: 15, color: COLORS.accent3, text: "Auto" },
-  { value: 20, color: "#F59E0B", text: "Others" },
-];
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const { data, error } = await supabase.from('cases').select('status')
+        if (error) throw error
+        setCaseCount(data.length)
+        const open = data.filter((c) => c.status !== 'Closed').length
+        const closed = data.filter((c) => c.status === 'Closed').length
+        setOpenCases(open)
+        setClosedCases(closed)
+      } catch (err) {
+        console.error('Error loading cases:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-export default function Dashboard() {
-  const navigation = useNavigation();
+    fetchStats()
+  }, [])
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator animating size="large" />
+        <Text style={{ marginTop: 10 }}>Loading dashboard...</Text>
+      </View>
+    )
+  }
+
+  // --- Chart data
+  const pieData = [
+    { value: openCases, color: '#ffb703', text: 'Open' },
+    { value: closedCases, color: '#219ebc', text: 'Closed' },
+  ]
+
+  const barData = [
+    { value: openCases, label: 'Open', frontColor: '#ffb703' },
+    { value: closedCases, label: 'Closed', frontColor: '#219ebc' },
+  ]
 
   return (
-    <ScrollView
-      style={{ backgroundColor: COLORS.bg }}
-      contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
-    >
-      <View style={styles.headerContainer}>
-        <Text style={styles.title}>ReCollect Dashboard</Text>
-        <Text style={styles.subtitle}>
-          Overview of your collections & cases
-        </Text>
-      </View>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Title style={styles.title}>Dashboard Overview</Title>
 
-      {/* KPI Cards */}
-      <View style={styles.kpiRow}>
-        <AnimatedCard
-          icon={<TrendingUp color={COLORS.accent} size={24} />}
-          label="Total Cases"
-          value="124"
-          delta="+8 today"
-          deltaColor={COLORS.accent}
+      <Surface style={styles.card}>
+        <Text style={styles.metricLabel}>Total Cases</Text>
+        <Text style={styles.metricValue}>{caseCount}</Text>
+      </Surface>
+
+      <Surface style={styles.chartCard}>
+        <Text style={styles.chartTitle}>Case Status Distribution</Text>
+        <PieChart
+          data={pieData}
+          donut
+          radius={80}
+          innerRadius={50}
+          centerLabelComponent={() => (
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ fontSize: 20, fontWeight: 'bold' }}>{caseCount}</Text>
+              <Text style={{ fontSize: 12, color: '#555' }}>Cases</Text>
+            </View>
+          )}
         />
-        <AnimatedCard
-          icon={<Wallet color={COLORS.accent2} size={24} />}
-          label="Collections"
-          value="₹1.84L"
-          delta="+12%"
-          deltaColor={COLORS.accent2}
+      </Surface>
+
+      <Surface style={styles.chartCard}>
+        <Text style={styles.chartTitle}>Open vs Closed</Text>
+        <BarChart
+          data={barData}
+          barWidth={40}
+          spacing={40}
+          yAxisThickness={0}
+          xAxisThickness={0}
+          xAxisLabelTextStyle={{ color: '#555', fontSize: 12 }}
+          yAxisTextStyle={{ color: '#555', fontSize: 12 }}
         />
-        <AnimatedCard
-          icon={<ClipboardList color={COLORS.accent3} size={24} />}
-          label="Pending"
-          value="32"
-          delta="8 urgent"
-          deltaColor={COLORS.accent3}
-        />
-      </View>
+      </Surface>
 
-      {/* Charts Row */}
-      <View
-        style={[
-          styles.gridRow,
-          Platform.OS === "web" && screenWidth > 980
-            ? { flexDirection: "row" }
-            : { flexDirection: "column" },
-        ]}
-      >
-        <Card style={[styles.chartCard, { flex: 2 }]}>
-          <Text style={styles.chartTitle}>Weekly Collections</Text>
-          <BarChart
-            data={dailyCollections}
-            barWidth={26}
-            spacing={16}
-            barBorderRadius={6}
-            frontColor={COLORS.accent}
-            gradientColor={COLORS.accent2}
-            yAxisThickness={0}
-            xAxisThickness={0}
-            isAnimated
-            noOfSections={4}
-            yAxisTextStyle={{ color: COLORS.subtext }}
-            xAxisLabelTextStyle={{ color: COLORS.subtext }}
-            backgroundColor="transparent"
-          />
-        </Card>
-
-        <Card style={[styles.chartCard, { flex: 1 }]}>
-          <Text style={styles.chartTitle}>Case Distribution</Text>
-          <View style={{ alignItems: "center" }}>
-            <PieChart
-              donut
-              radius={90}
-              innerRadius={55}
-              data={pieData}
-              focusOnPress
-              sectionAutoFocus
-              innerCircleColor={COLORS.card}
-              centerLabelComponent={() => (
-                <View style={{ alignItems: "center" }}>
-                  <Text
-                    style={{
-                      color: COLORS.text,
-                      fontSize: 18,
-                      fontWeight: "700",
-                    }}
-                  >
-                    124
-                  </Text>
-                  <Text
-                    style={{
-                      color: COLORS.subtext,
-                      fontSize: 12,
-                    }}
-                  >
-                    Total Cases
-                  </Text>
-                </View>
-              )}
-            />
-          </View>
-        </Card>
-      </View>
-
-      {/* Action Buttons */}
-      <View style={styles.actionsRow}>
+      <View style={styles.buttonRow}>
         <Button
           mode="contained"
-          buttonColor={COLORS.accent}
-          textColor="#fff"
-          style={styles.actionBtn}
-          onPress={() => navigation.navigate("AddCase" as never)}
+          style={styles.button}
+          icon="plus"
+          onPress={() => navigation.navigate('AddCase')}
         >
-          + Add New Case
+          Add Case
         </Button>
+
         <Button
           mode="outlined"
-          textColor={COLORS.accent}
-          style={[styles.actionBtn, { borderColor: COLORS.accent }]}
-          onPress={() => navigation.navigate("ViewCases" as never)}
+          style={styles.button}
+          icon="eye"
+          onPress={() => navigation.navigate('ViewCases' as never)}
         >
-          View All Cases
+          View Cases
         </Button>
       </View>
     </ScrollView>
-  );
+  )
 }
 
-// 🎬 Animated KPI Card Component
-function AnimatedCard({
-  icon,
-  label,
-  value,
-  delta,
-  deltaColor,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  delta: string;
-  deltaColor: string;
-}) {
-  return (
-    <MotiView
-      from={{ opacity: 0, translateY: 20 }}
-      animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: "timing", duration: 600 }}
-      style={styles.kpiCard}
-    >
-      <View style={styles.kpiIcon}>{icon}</View>
-      <Text style={styles.kpiLabel}>{label}</Text>
-      <Text style={styles.kpiValue}>{value}</Text>
-      <Text style={[styles.kpiDelta, { color: deltaColor }]}>{delta}</Text>
-    </MotiView>
-  );
-}
-
-// ---------- Styles ----------
 const styles = StyleSheet.create({
-  headerContainer: {
-    marginBottom: 20,
+  container: {
+    padding: 20,
+    backgroundColor: '#f6f7fb',
+    alignItems: 'center',
   },
   title: {
-    color: COLORS.text,
-    fontSize: 26,
-    fontWeight: "800",
-    marginBottom: 4,
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginVertical: 10,
   },
-  subtitle: {
-    color: COLORS.subtext,
-    fontSize: 14,
+  card: {
+    width: '90%',
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: 'white',
+    elevation: 3,
+    marginVertical: 10,
   },
-  kpiRow: {
-    flexDirection:
-      Platform.OS === "web" && Dimensions.get("window").width > 980
-        ? "row"
-        : "column",
-    gap: 14,
-    marginBottom: 24,
-  },
-  kpiCard: {
-    flex: 1,
-    backgroundColor: COLORS.card,
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    alignItems: "flex-start",
-  },
-  kpiIcon: {
-    backgroundColor: COLORS.cardAlt,
-    padding: 8,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  kpiLabel: { color: COLORS.subtext, fontSize: 13, marginBottom: 2 },
-  kpiValue: { color: COLORS.text, fontSize: 24, fontWeight: "800" },
-  kpiDelta: { fontSize: 12, marginTop: 2 },
-  gridRow: {
-    gap: 16,
-    marginBottom: 30,
-  },
+  metricLabel: { fontSize: 16, color: '#555' },
+  metricValue: { fontSize: 28, fontWeight: 'bold', color: '#003366' },
   chartCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    width: '90%',
+    borderRadius: 12,
+    backgroundColor: 'white',
+    elevation: 3,
+    padding: 20,
+    alignItems: 'center',
+    marginVertical: 10,
   },
   chartTitle: {
-    color: COLORS.text,
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: '600',
     marginBottom: 10,
+    color: '#333',
   },
-  actionsRow: {
-    flexDirection:
-      Platform.OS === "web" && Dimensions.get("window").width > 600
-        ? "row"
-        : "column",
-    gap: 12,
-    justifyContent: "center",
-    marginTop: 20,
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '90%',
+    marginVertical: 20,
   },
-  actionBtn: {
+  button: {
+    flex: 1,
+    marginHorizontal: 5,
     borderRadius: 8,
   },
-});
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+})
