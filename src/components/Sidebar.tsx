@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   menuTextActive: {
-    fontWeight: "700",
+    fontWeight: "900",
     color: COLORS.accent,
   },
 });
