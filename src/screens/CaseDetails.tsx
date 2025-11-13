@@ -30,6 +30,7 @@ import { Calendar } from "react-native-calendars";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { supabase } from "../lib/supabaseClient";
 import TransferCaseModal from "../components/TransferCaseModal";
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 const { width } = Dimensions.get("window");
 const isMobile = width < 700;
@@ -126,7 +127,7 @@ export default function CaseDetailsV2() {
               </Paragraph>
             </View>
             <Chip style={styles.statusChip}>{val(caseData.status)}</Chip>
-          
+          </View>
 
           <View style={styles.actionRow}>
             <Button
@@ -159,7 +160,6 @@ export default function CaseDetailsV2() {
             >
               Close
             </Button>
-            </View>
           </View>
         </Surface>
 
@@ -186,7 +186,7 @@ export default function CaseDetailsV2() {
         <Card style={styles.sectionCard}>
           <Card.Title
             title="Case Details"
-            left={(props) => <MaterialIcons {...props} name="info" />}
+            left={(props) => <MaterialIcons {...props} name="bookmark" />}
           />
           <Card.Content>
             <Paragraph>
@@ -378,7 +378,7 @@ grid: {
 metricCard: {
   backgroundColor: "#fff",
   alignItems:"center",
-  borderRadius: 9,
+  borderRadius: 5,
   elevation: 1,
   margin: 8,                  // spacing
   width: "45%",               // keeps layout tidy
