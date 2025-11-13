@@ -1,87 +1,97 @@
-// src/screens/CaseDetails.tsx
-import React, { useEffect, useState, useMemo } from "react";
+// ✅ src/screens/CaseDetails.tsx
+import React, { useEffect, useState } from "react";
 import {
   View,
   ScrollView,
   StyleSheet,
   Dimensions,
-  TouchableOpacity,
   Platform,
 } from "react-native";
 import {
   Card,
-  Text,
+  Title,
   Paragraph,
-  Chip,
+  Divider,
   Button,
+  Chip,
   ActivityIndicator,
+  Text,
   Surface,
 } from "react-native-paper";
-import { supabase } from "../lib/supabaseClient";
 import { useRoute } from "@react-navigation/native";
-
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-
+import { supabase } from "../lib/supabaseClient";
 import TransferCaseModal from "../components/TransferCaseModal";
+import { Calendar } from "react-native-calendars";
+import { MaterialIcons } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 
 export default function CaseDetails() {
   const route = useRoute();
-  const { caseId } = (route.params as any) ?? {};
+  const { caseId } = route.params as { caseId: string };
 
   const [caseData, setCaseData] = useState<any>(null);
-  const [notes, setNotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [showTransfer, setShowTransfer] = useState(false);
+  const [notes, setNotes] = useState<any[]>([]);
 
   const colors = {
-    bg: "#F5F7FA",
-    surface: "#FFFFFF",
-    primary: "#2563EB",
-    accent: "#F97316",
-    text: "#1E293B",
-    muted: "#64748B",
-    border: "#E2E8F0",
+    bg: "#0f172a",
+    card: "#1e293b",
+    accent: "#f97316",
+    text: "#f8fafc",
+    sub: "#94a3b8",
   };
 
-  // ---------------- Fetch Case + Notes ----------------
+  // ✅ Fetch current user
   useEffect(() => {
-    const loadAll = async () => {
-      try {
-        const { data } = await supabase
-          .from("cases")
-          .select("*, assigned_user:assigned_to(id, name, role)")
-          .eq("id", caseId)
-          .single();
-
-        setCaseData(data);
-
-        const { data: notesList } = await supabase
-          .from("notes")
+    const fetchCurrentUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        const { data: profile } = await supabase
+          .from("users")
           .select("*")
-          .eq("case_id", caseId)
-          .order("created_at", { ascending: false });
-
-        setNotes(notesList || []);
-      } catch (e) {
-        console.log("Load error:", e);
-      } finally {
-        setLoading(false);
+          .eq("id", data.user.id)
+          .single();
+        setCurrentUser(profile);
       }
     };
+    fetchCurrentUser();
+  }, []);
 
-    if (caseId) loadAll();
+  // ✅ Fetch case data + notes
+  useEffect(() => {
+    const fetchCase = async () => {
+      const { data, error } = await supabase
+        .from("cases")
+        .select("*, assigned_user:assigned_to(id, name, role)")
+        .eq("id", caseId)
+        .single();
+      if (!error && data) setCaseData(data);
+      setLoading(false);
+    };
+
+    const fetchNotes = async () => {
+      const { data } = await supabase
+        .from("notes")
+        .select("*")
+        .eq("case_id", caseId)
+        .order("created_at", { ascending: false });
+      if (data) setNotes(data);
+    };
+
+    if (caseId) {
+      fetchCase();
+      fetchNotes();
+    }
   }, [caseId]);
 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={{ marginTop: 10, color: colors.muted }}>
-          Loading Case Details...
-        </Text>
+        <ActivityIndicator size="large" />
+        <Text style={{ marginTop: 8 }}>Loading case details...</Text>
       </View>
     );
   }
@@ -89,368 +99,213 @@ export default function CaseDetails() {
   if (!caseData) {
     return (
       <View style={styles.center}>
-        <Text style={{ color: colors.muted }}>Case not found.</Text>
+        <Text>No case found.</Text>
       </View>
     );
   }
 
-  const val = (v: any) => (v || v === 0 ? v : "—");
+  const val = (v: any) => (v ? v : "—");
 
-  // ---------------- UI Rendering ----------------
+  // ---------- UI ----------
   return (
-    <View style={[styles.page, { backgroundColor: colors.bg }]}>
-      {/* 🔵 TOP SUMMARY BAR */}
-      <Surface style={[styles.header, { backgroundColor: colors.surface }]}>
-        <View style={styles.headerLeft}>
-          <Text style={[styles.caseTitle, { color: colors.text }]}>
-            {val(caseData.account_name)}
-          </Text>
-
-          <View style={styles.headerRow}>
-            <Chip textStyle={{ color: colors.primary }}>
-              {String(caseData.status).toUpperCase()}
-            </Chip>
-
-            <Text style={[styles.subText, { marginLeft: 8 }]}>
-              {val(caseData.bank)} • {val(caseData.branch)}
-            </Text>
-          </View>
-
-          <Text style={[styles.subText, { marginTop: 6 }]}>
-            Assigned to:{" "}
-            <Text style={{ color: colors.primary, fontWeight: "700" }}>
-              {caseData.assigned_user?.name ?? "—"}
-            </Text>
-          </Text>
+    <ScrollView style={styles.container}>
+      {/* ---------- HEADER ---------- */}
+      <Surface style={styles.headerCard}>
+        <View style={styles.headerTop}>
+          <Title style={styles.title}>{val(caseData.account_name)}</Title>
+          <Chip style={styles.statusChip}>{val(caseData.status)}</Chip>
         </View>
-
-        {/* Buttons */}
-        <View style={styles.headerActions}>
+        <Paragraph style={styles.subTitle}>
+          Bank: {val(caseData.bank)} | Branch: {val(caseData.branch)}
+        </Paragraph>
+        <Paragraph style={styles.subTitle}>
+          Assigned To:{" "}
+          <Text style={{ fontWeight: "bold", color: colors.accent }}>
+            {caseData.assigned_user?.name || "Unknown"}
+          </Text>
+        </Paragraph>
+        <View style={styles.actionRow}>
           <Button
             mode="outlined"
-            compact
-            textColor={colors.primary}
+            textColor={colors.accent}
             onPress={() => setShowTransfer(true)}
-            style={styles.smallBtn}
           >
             Transfer
           </Button>
-
-          <Button
-            mode="contained"
-            compact
-            buttonColor={colors.primary}
-            textColor="#fff"
-            style={styles.smallBtn}
-          >
-            Update
+          <Button mode="contained" buttonColor="#22c55e" textColor="#fff">
+            Update Case
           </Button>
-
-          <Button
-            mode="outlined"
-            compact
-            textColor="#EF4444"
-            style={styles.smallBtn}
-          >
+          <Button mode="contained" buttonColor="#e11d48" textColor="#fff">
             Close
           </Button>
         </View>
       </Surface>
 
-      {/* 🔵 MIDDLE GRID: FINANCIAL + CUSTOMER */}
-      <View
-        style={[
-          styles.middleGrid,
-          { flexDirection: width > 900 ? "row" : "column" },
-        ]}
-      >
-        {/* Financial Summary */}
-        <View style={{ flex: 1 }}>
-          <Card style={[styles.finCardParent]}>
-            <Card.Title
-              title="Financial Summary"
-              left={() => (
-                <MaterialIcons
-                  name="analytics"
-                  size={22}
-                  color={colors.primary}
-                />
-              )}
-            />
-
+      {/* ---------- FINANCIAL CARDS ---------- */}
+      <View style={styles.cardGrid}>
+        {[
+          { label: "EMI Amount", value: caseData.emi_amount },
+          { label: "Pending Balance", value: caseData.pending_balance },
+          { label: "Overdue", value: caseData.overdue_amount },
+          { label: "Upgrade Amount", value: caseData.upgrade_amount },
+          { label: "Amount Received", value: caseData.amount_received },
+          { label: "Loan Amount", value: caseData.loan_amount },
+        ].map((item, i) => (
+          <Card key={i} style={styles.metricCard}>
             <Card.Content>
-              <View style={styles.finGrid}>
-                <FinCard
-                  icon="cash-multiple"
-                  label="EMI Amount"
-                  value={val(caseData.emi_amount)}
-                />
-                <FinCard
-                  icon="cash-remove"
-                  label="Pending"
-                  value={val(caseData.pending_balance)}
-                />
-                <FinCard
-                  icon="calendar-clock"
-                  label="Overdue"
-                  value={val(caseData.overdue_amount)}
-                />
-                <FinCard
-                  icon="trending-up"
-                  label="Upgrade"
-                  value={val(caseData.upgrade_amount)}
-                />
-                <FinCard
-                  icon="cash-check"
-                  label="Received"
-                  value={val(caseData.amount_received)}
-                />
-                <FinCard
-                  icon="bank"
-                  label="Loan Amount"
-                  value={val(caseData.loan_amount)}
-                />
-              </View>
+              <Paragraph style={styles.metricLabel}>{item.label}</Paragraph>
+              <Title style={styles.metricValue}>₹{val(item.value)}</Title>
             </Card.Content>
           </Card>
-        </View>
-
-        {/* Customer Details */}
-        <View
-          style={{
-            width: width > 900 ? 360 : "100%",
-            marginTop: width > 900 ? 0 : 12,
-          }}
-        >
-          <Card style={styles.customerCard}>
-            <Card.Title
-              title="Customer Details"
-              left={() => (
-                <MaterialCommunityIcons
-                  name="account"
-                  size={22}
-                  color={colors.primary}
-                />
-              )}
-            />
-
-            <Card.Content>
-              <DetailRow label="Name" value={val(caseData.customer_name)} />
-              <DetailRow label="Phone" value={val(caseData.contact_number)} />
-              <DetailRow label="Office" value={val(caseData.office_number)} />
-
-              <Text style={styles.rowLabel}>Address</Text>
-              <Text style={styles.rowValue}>{val(caseData.customer_address)}</Text>
-            </Card.Content>
-          </Card>
-        </View>
+        ))}
       </View>
 
-      {/* 🔵 BOTTOM GRID: NOTES + CALENDAR */}
+      {/* ---------- CUSTOMER DETAILS ---------- */}
+      <Card style={styles.sectionCard}>
+        <Card.Title
+          title="Customer Details"
+          left={(props) => <MaterialIcons {...props} name="person" />}
+        />
+        <Card.Content>
+          <Paragraph>Name: {val(caseData.customer_name)}</Paragraph>
+          <Paragraph>Contact: {val(caseData.contact_number)}</Paragraph>
+          <Paragraph>Office Number: {val(caseData.office_number)}</Paragraph>
+          <Divider style={{ marginVertical: 6 }} />
+          <Paragraph style={{ fontWeight: "600" }}>Customer Address</Paragraph>
+          <Paragraph>{val(caseData.customer_address)}</Paragraph>
+          <Paragraph style={{ fontWeight: "600", marginTop: 8 }}>
+            Office Address
+          </Paragraph>
+          <Paragraph>{val(caseData.alternate_address)}</Paragraph>
+        </Card.Content>
+      </Card>
+
+      {/* ---------- NOTES + CALENDAR ---------- */}
       <View
         style={[
-          styles.bottomGrid,
-          { flexDirection: width > 900 ? "row" : "column" },
+          styles.noteCalendarWrap,
+          { flexDirection: width > 800 ? "row" : "column" },
         ]}
       >
         {/* Notes */}
-        <View style={{ flex: 1 }}>
-          <Card style={styles.notesCard}>
-            <Card.Title
-              title="Notes"
-              left={() => (
-                <MaterialCommunityIcons
-                  name="note-text"
-                  size={20}
-                  color={colors.primary}
-                />
-              )}
-            />
-
-            <Card.Content>
-              <ScrollView style={{ maxHeight: 350 }}>
-                {notes.length === 0 ? (
-                  <Text style={{ color: colors.muted }}>No notes.</Text>
-                ) : (
-                  notes.map((n) => (
-                    <View key={n.id} style={styles.noteRow}>
-                      <MaterialIcons
-                        name="comment"
-                        size={18}
-                        color={colors.primary}
-                      />
-                      <View style={{ marginLeft: 8 }}>
-                        <Text style={styles.noteText}>{n.content}</Text>
-                        <Text style={styles.noteTime}>
-                          {new Date(n.created_at).toLocaleString()}
-                        </Text>
-                      </View>
-                    </View>
-                  ))
-                )}
-              </ScrollView>
-            </Card.Content>
-          </Card>
-        </View>
+        <Card style={[styles.sectionCard, { flex: 1 }]}>
+          <Card.Title title="Notes" />
+          <Card.Content>
+            {notes.length === 0 ? (
+              <Paragraph style={{ color: colors.sub }}>
+                No notes available.
+              </Paragraph>
+            ) : (
+              notes.map((note) => (
+                <View key={note.id} style={styles.noteItem}>
+                  <MaterialIcons
+                    name="comment"
+                    size={18}
+                    color={colors.accent}
+                  />
+                  <View style={{ marginLeft: 10 }}>
+                    <Paragraph style={{ color: colors.text }}>
+                      {note.content}
+                    </Paragraph>
+                    <Text style={{ color: colors.sub, fontSize: 12 }}>
+                      {new Date(note.created_at).toLocaleString()}
+                    </Text>
+                  </View>
+                </View>
+              ))
+            )}
+          </Card.Content>
+        </Card>
 
         {/* Calendar */}
-        <View
-          style={{
-            width: width > 900 ? 340 : "100%",
-            marginLeft: width > 900 ? 12 : 0,
-            marginTop: width > 900 ? 0 : 12,
-          }}
+        <Card
+          style={[
+            styles.sectionCard,
+            { flex: 1, marginLeft: width > 800 ? 10 : 0 },
+          ]}
         >
-          <Card style={styles.calendarCard}>
-            <Card.Title
-              title="Follow-up Calendar"
-              left={() => (
-                <MaterialIcons
-                  name="event"
-                  size={22}
-                  color={colors.primary}
-                />
-              )}
+          <Card.Title title="Follow-up Calendar" />
+          <Card.Content>
+            <Calendar
+              style={{
+                borderRadius: 10,
+                borderWidth: 0,
+              }}
+              theme={{
+                backgroundColor: "white",
+                calendarBackground: "white",
+                todayTextColor: colors.accent,
+              }}
+              markedDates={{
+                "2025-11-15": { marked: true, dotColor: colors.accent },
+              }}
             />
-
-            <Card.Content>
-              <MiniCalendar />
-            </Card.Content>
-          </Card>
-        </View>
+          </Card.Content>
+        </Card>
       </View>
 
-      {/* Transfer Modal */}
+      {/* ---------- MODAL ---------- */}
       <TransferCaseModal
         visible={showTransfer}
         onClose={() => setShowTransfer(false)}
         caseId={caseData.id}
+        currentUser={currentUser}
         currentAssigned={caseData.assigned_user}
-        currentUser={null}
       />
-    </View>
+    </ScrollView>
   );
 }
 
-// ------------------- Reusable Components -------------------
-
-function FinCard({ icon, label, value }: any) {
-  return (
-    <View style={styles.finCard}>
-      <MaterialCommunityIcons
-        name={icon}
-        size={22}
-        color="#2563EB"
-        style={{ marginBottom: 4 }}
-      />
-      <Text style={styles.finLabel}>{label}</Text>
-      <Text style={styles.finValue}>₹ {value}</Text>
-    </View>
-  );
-}
-
-function DetailRow({ label, value }: any) {
-  return (
-    <View style={{ marginBottom: 10 }}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
-    </View>
-  );
-}
-
-// clean small inline calendar (no libs)
-function MiniCalendar() {
-  const today = new Date().toDateString();
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-  return (
-    <View>
-      <View style={styles.calHeader}>
-        <Text style={styles.calHeaderText}>This Week</Text>
-      </View>
-
-      <View style={styles.calWeekRow}>
-        {days.map((d) => (
-          <View key={d} style={styles.calDayBox}>
-            <Text style={styles.calDayText}>{d}</Text>
-            <View style={styles.calDot} />
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-// ------------------- Styles -------------------
 const styles = StyleSheet.create({
-  page: { flex: 1, padding: 12 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-
-  header: {
-    padding: 14,
-    borderRadius: 10,
-    elevation: 2,
+  container: { flex: 1, backgroundColor: "#f8fafc", padding: 10 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  headerCard: {
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 12,
+    elevation: 3,
     marginBottom: 10,
   },
-  headerLeft: { flex: 1 },
-  caseTitle: { fontSize: 22, fontWeight: "700" },
-  headerRow: { flexDirection: "row", alignItems: "center", marginTop: 6 },
-  subText: { color: "#64748B", fontSize: 13 },
-
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+  headerTop: { flexDirection: "row", alignItems: "center" },
+  title: { fontSize: 22, fontWeight: "bold", flex: 1 },
+  statusChip: {
+    backgroundColor: "#e2e8f0",
+    color: "#1e293b",
+    fontWeight: "600",
   },
-  smallBtn: { paddingHorizontal: 6, paddingVertical: 2 },
-
-  middleGrid: { gap: 12, marginTop: 6 },
-  finCardParent: { borderRadius: 10 },
-  finGrid: {
+  subTitle: { color: "#475569", marginTop: 4 },
+  actionRow: {
+    flexDirection: "row",
+    marginTop: 12,
+    gap: 10,
+  },
+  cardGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
-    marginTop: 10,
-  },
-
-  finCard: {
-    width: "47%",
-    backgroundColor: "#FFFFFF",
-    padding: 12,
-    borderRadius: 10,
-    elevation: 1,
-    alignItems: "center",
-  },
-  finLabel: { color: "#64748B", fontSize: 12 },
-  finValue: { fontSize: 16, fontWeight: "700", marginTop: 3 },
-
-  customerCard: { borderRadius: 10, elevation: 2 },
-
-  rowLabel: { fontSize: 12, color: "#64748B" },
-  rowValue: { fontSize: 15, fontWeight: "600", color: "#1E293B" },
-
-  bottomGrid: { marginTop: 10, gap: 12 },
-  notesCard: { borderRadius: 10 },
-  noteRow: { flexDirection: "row", marginBottom: 10 },
-  noteText: { color: "#1E293B" },
-  noteTime: { color: "#64748B", fontSize: 12 },
-
-  calendarCard: { borderRadius: 10 },
-
-  calHeader: { alignItems: "center", marginBottom: 10 },
-  calHeaderText: { fontSize: 15, fontWeight: "700", color: "#1E293B" },
-  calWeekRow: {
-    flexDirection: "row",
     justifyContent: "space-between",
   },
-  calDayBox: { alignItems: "center" },
-  calDayText: { color: "#64748B", fontSize: 12 },
-  calDot: {
-    width: 6,
-    height: 6,
-    backgroundColor: "#2563EB",
-    marginTop: 4,
-    borderRadius: 50,
+  metricCard: {
+    flexBasis: "48%",
+    backgroundColor: "#fff",
+    marginBottom: 10,
+    borderRadius: 10,
+    elevation: 2,
+  },
+  metricLabel: { color: "#64748b", fontSize: 13 },
+  metricValue: { fontSize: 20, fontWeight: "bold", color: "#0f172a" },
+  sectionCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    marginTop: 10,
+    elevation: 2,
+  },
+  noteCalendarWrap: { marginTop: 10 },
+  noteItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginVertical: 6,
+    backgroundColor: "#0f172a",
+    padding: 8,
+    borderRadius: 8,
   },
 });
-
