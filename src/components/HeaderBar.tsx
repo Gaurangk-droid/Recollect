@@ -15,6 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation, NavigationProp } from "@react-navigation/native";
 import { COLORS } from "../styles/theme";
 import { RootStackParamList } from "../navigation/AppNavigator";
+import { globalStyles } from "../styles/globalStyles";
 
 interface HeaderBarProps {
   onToggleMenu: () => void;
@@ -48,9 +49,36 @@ export default function HeaderBar({
 
   // Calculate safe offset below header
   const dropdownTop =
-    Platform.OS === "web"
-      ? 56 // header height only
-      : 56 + (StatusBar.currentHeight || 0); // header + status bar
+    Platform.OS === "web" ? 56 : 56 + (StatusBar.currentHeight || 0);
+
+  function DropdownItem({
+    children,
+    onPress,
+    isLast = false,
+  }: {
+    children: React.ReactNode;
+    onPress: () => void;
+    isLast?: boolean;
+  }) {
+    const [hovered, setHovered] = useState(false);
+
+    return (
+      <Pressable
+        onPress={onPress}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        style={({ pressed }) => [
+          styles.menuItem,
+          !isLast && styles.menuItemBorder, // Apply border only if NOT last
+          isLast && styles.noBorder, // Force remove border for last item
+          (pressed || hovered) && { backgroundColor: COLORS.primaryLight },
+          pressed && { opacity: 0.9 },
+        ]}
+      >
+        <Text style={styles.menuText}>{children}</Text>
+      </Pressable>
+    );
+  }
 
   return (
     <View style={styles.header}>
@@ -95,34 +123,34 @@ export default function HeaderBar({
         </TouchableOpacity>
       </View>
 
-      {/* Dropdown menu (anchored below header) */}
+      {/* Dropdown Menu */}
       {menuVisible && (
         <Portal>
           <TouchableWithoutFeedback onPress={closeMenu}>
             <View style={styles.overlay}>
               <TouchableWithoutFeedback>
                 <Surface style={[styles.dropdownMenu, { top: dropdownTop }]}>
-                  <Pressable
-                    style={styles.menuItem}
+                  <DropdownItem
                     onPress={() => {
                       closeMenu();
                       console.log("View Profile");
                     }}
                   >
-                    <Text style={styles.menuText}>View Profile</Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles.menuItem}
+                    View Profile
+                  </DropdownItem>
+
+                  <DropdownItem
                     onPress={() => {
                       closeMenu();
                       console.log("Settings");
                     }}
                   >
-                    <Text style={styles.menuText}>Settings</Text>
-                  </Pressable>
-                  <Pressable style={styles.menuItem} onPress={handleLogout}>
-                    <Text style={styles.menuText}>Logout</Text>
-                  </Pressable>
+                    Settings
+                  </DropdownItem>
+
+                  <DropdownItem isLast onPress={handleLogout}>
+                    Logout
+                  </DropdownItem>
                 </Surface>
               </TouchableWithoutFeedback>
             </View>
@@ -140,36 +168,61 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     elevation: 4,
     shadowColor: "#000",
     shadowOpacity: 0.08,
-    shadowRadius: 3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
     zIndex: 10,
   },
   title: {
     color: COLORS.textLight,
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: "700",
+    letterSpacing: 0.3,
   },
-  menuButton: { padding: 6 },
-  rightSection: { flexDirection: "row", alignItems: "center", gap: 10 },
-  iconButton: { padding: 6, position: "relative" },
+  menuButton: {
+    padding: 6,
+  },
+  rightSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  iconButton: {
+    padding: 6,
+    position: "relative",
+  },
   badge: {
     position: "absolute",
     right: 2,
     top: 2,
     backgroundColor: COLORS.danger,
-    borderRadius: 10,
+    borderRadius: 8,
     minWidth: 16,
     height: 16,
     justifyContent: "center",
     alignItems: "center",
   },
-  badgeText: { color: COLORS.textLight, fontSize: 10, fontWeight: "700" },
-  profileContainer: { flexDirection: "row", alignItems: "center", gap: 6 },
-  profileName: { color: COLORS.textLight, fontSize: 14, fontWeight: "500" },
-
+  badgeText: {
+    color: COLORS.textLight,
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  noBorder: {
+    borderBottomWidth: 0, // ✅ Force remove any inherited border
+  },
+  profileContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  profileName: {
+    color: COLORS.textLight,
+    fontSize: 14,
+    fontWeight: "500",
+  },
   overlay: {
     position: "absolute",
     top: 0,
@@ -182,11 +235,31 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 10,
     backgroundColor: COLORS.card,
-    borderRadius: 10,
-    elevation: 6,
+    borderRadius: 16,
     width: 200,
-    paddingVertical: 6,
+    paddingVertical: 8,
+    ...Platform.select({
+      android: { elevation: 6 },
+      ios: {
+        shadowColor: "#000",
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+      },
+    }),
   },
-  menuItem: { paddingVertical: 12, paddingHorizontal: 14 },
-  menuText: { color: COLORS.textPrimary, fontSize: 14 },
+  menuItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  menuText: {
+    color: COLORS.textPrimary,
+    fontSize: 14,
+  },
+  menuItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
 });

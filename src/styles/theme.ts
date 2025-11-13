@@ -7,7 +7,7 @@ export const COLORS = {
   card: "#FFFFFF",
   cardAlt: "#E7F0FA",
   border: "#E2E8F0",
-
+  lightBlue: "#E3F2FD",
   // 🌈 Text
   textPrimary: "#1E293B",
   textSecondary: "#64748B",
@@ -27,4 +27,7 @@ export const COLORS = {
   bg: "#F7FAFC",       // soft app background
   header: "#2B5EA8",   // brand blue header
   sidebar: "#EAF3FF",  // subtle sidebar background
+
+  primaryHover: "rgba(0,0,0,0.05)", // light theme default
+
 };

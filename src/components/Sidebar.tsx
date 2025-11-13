@@ -1,10 +1,17 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Platform,
+  Animated,
+} from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation, NavigationProp } from "@react-navigation/native";
-import { RootStackParamList } from "../navigation/AppNavigator";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS } from "../styles/theme";
+import { RootStackParamList } from "../navigation/AppNavigator";
 
 interface SidebarProps {
   active: keyof RootStackParamList;
@@ -56,10 +63,11 @@ export default function Sidebar({
               }}
               onHoverIn={() => Platform.OS === "web" && setHoveredIndex(index)}
               onHoverOut={() => Platform.OS === "web" && setHoveredIndex(null)}
-              style={[
+              style={({ pressed }) => [
                 styles.menuItem,
                 isActive && styles.activeItem,
                 isHovered && styles.hoverItem,
+                pressed && { opacity: 0.9 },
               ]}
             >
               <MaterialIcons
@@ -89,22 +97,15 @@ export default function Sidebar({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.primaryLight, // ✅ soft blue background
+    backgroundColor: COLORS.primaryLight, // soft blue background
   },
   sidebar: {
     flex: 1,
-    backgroundColor: COLORS.primaryLight, // ✅ subtle color instead of white
+    backgroundColor: COLORS.primaryLight,
     paddingVertical: 30,
     paddingHorizontal: 14,
     borderRightWidth: 1,
     borderRightColor: COLORS.border,
-  },
-  logo: {
-    color: COLORS.accent,
-    fontWeight: "bold",
-    fontSize: 18,
-    marginBottom: 30,
-    textAlign: "center",
   },
   menuItem: {
     flexDirection: "row",
@@ -113,9 +114,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     borderRadius: 8,
     paddingHorizontal: 10,
+    transition: "all 0.2s ease", // only used on web (ignored in native)
   },
   activeItem: {
-    backgroundColor: COLORS.card, // ✅ white background for active
+    backgroundColor: COLORS.card, // white background for active
     shadowColor: COLORS.border,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
@@ -123,7 +125,8 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   hoverItem: {
-    backgroundColor: "#EEF6FF", // ✅ slightly lighter hover shade
+    backgroundColor: COLORS.primaryHover || "#E7F3FF", // light blue hover
+    transform: [{ scale: 1.02 }],
   },
   menuText: {
     fontSize: 15,
