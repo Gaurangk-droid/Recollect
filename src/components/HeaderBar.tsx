@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -15,22 +15,21 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation, NavigationProp } from "@react-navigation/native";
 import { COLORS } from "../styles/theme";
 import { RootStackParamList } from "../navigation/AppNavigator";
-import { globalStyles } from "../styles/globalStyles";
+import { supabase } from "../lib/supabaseClient"; // ✅ import supabase client
 
 interface HeaderBarProps {
   onToggleMenu: () => void;
-  name: string;
   isDrawerOpen?: boolean;
 }
 
 export default function HeaderBar({
   onToggleMenu,
-  name,
   isDrawerOpen,
 }: HeaderBarProps) {
   const isLargeScreen = Dimensions.get("window").width > 900;
   const [menuVisible, setMenuVisible] = useState(false);
   const [notifCount, setNotifCount] = useState(3);
+  const [name, setName] = useState<string>("User"); // ✅ name from Supabase
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   const toggleMenu = () => setMenuVisible((prev) => !prev);
@@ -47,7 +46,32 @@ export default function HeaderBar({
     }, 150);
   };
 
-  // Calculate safe offset below header
+  // ✅ Fetch logged-in user’s name from Supabase
+  useEffect(() => {
+    const fetchUserName = async () => {
+      try {
+        const { data: authData, error: authError } =
+          await supabase.auth.getUser();
+        if (authError) throw authError;
+        if (!authData?.user) return;
+
+        const { data, error } = await supabase
+          .from("users") // your table name
+          .select("name") // the field to fetch
+          .eq("id", authData.user.id)
+          .single();
+
+        if (error) throw error;
+
+        if (data?.name) setName(data.name);
+      } catch (err) {
+        console.log("Error fetching user name:", err);
+      }
+    };
+
+    fetchUserName();
+  }, []);
+
   const dropdownTop =
     Platform.OS === "web" ? 56 : 56 + (StatusBar.currentHeight || 0);
 
@@ -69,8 +93,8 @@ export default function HeaderBar({
         onHoverOut={() => setHovered(false)}
         style={({ pressed }) => [
           styles.menuItem,
-          !isLast && styles.menuItemBorder, // Apply border only if NOT last
-          isLast && styles.noBorder, // Force remove border for last item
+          !isLast && styles.menuItemBorder,
+          isLast && styles.noBorder,
           (pressed || hovered) && { backgroundColor: COLORS.primaryLight },
           pressed && { opacity: 0.9 },
         ]}
@@ -118,7 +142,9 @@ export default function HeaderBar({
             style={{ backgroundColor: COLORS.accent2 }}
             color={COLORS.textLight}
           />
-          {isLargeScreen && <Text style={styles.profileName}>{name}</Text>}
+          {isLargeScreen && (
+            <Text style={styles.profileName}>Hello {name}</Text>
+          )}
           <Ionicons name="chevron-down" size={18} color={COLORS.textLight} />
         </TouchableOpacity>
       </View>
@@ -182,18 +208,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.3,
   },
-  menuButton: {
-    padding: 6,
-  },
-  rightSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  iconButton: {
-    padding: 6,
-    position: "relative",
-  },
+  menuButton: { padding: 6 },
+  rightSection: { flexDirection: "row", alignItems: "center", gap: 12 },
+  iconButton: { padding: 6, position: "relative" },
   badge: {
     position: "absolute",
     right: 2,
@@ -205,24 +222,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  badgeText: {
-    color: COLORS.textLight,
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  noBorder: {
-    borderBottomWidth: 0, // ✅ Force remove any inherited border
-  },
-  profileContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  profileName: {
-    color: COLORS.textLight,
-    fontSize: 14,
-    fontWeight: "500",
-  },
+  badgeText: { color: COLORS.textLight, fontSize: 10, fontWeight: "700" },
+  noBorder: { borderBottomWidth: 0 },
+  profileContainer: { flexDirection: "row", alignItems: "center", gap: 6 },
+  profileName: { color: COLORS.textLight, fontSize: 14, fontWeight: "500" },
   overlay: {
     position: "absolute",
     top: 0,
@@ -254,12 +257,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  menuText: {
-    color: COLORS.textPrimary,
-    fontSize: 14,
-  },
-  menuItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
+  menuText: { color: COLORS.textPrimary, fontSize: 14 },
+  menuItemBorder: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
 });
