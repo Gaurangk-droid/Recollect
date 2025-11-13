@@ -114,7 +114,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     borderRadius: 8,
     paddingHorizontal: 10,
-    transition: "all 0.2s ease", // only used on web (ignored in native)
   },
   activeItem: {
     backgroundColor: COLORS.card, // white background for active

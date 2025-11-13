@@ -1,10 +1,4 @@
-import React, {
-  useEffect,
-  useState,
-  useMemo,
-  useCallback,
-  memo,
-} from "react";
+import React, { useEffect, useState, useMemo, useCallback, memo } from "react";
 import {
   View,
   FlatList,
@@ -35,6 +29,7 @@ import {
 } from "lucide-react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
+import { COLORS } from "../styles/theme";
 
 type Case = {
   id: string;
@@ -80,7 +75,9 @@ function Dropdown({
           editable={false}
           right={<TextInput.Icon icon="menu-down" />}
           style={styles.filterInput}
-          textColor="#FFFFFF"
+          textColor={COLORS.textPrimary}
+          outlineColor={COLORS.border}
+          activeOutlineColor={COLORS.primary}
         />
       </TouchableOpacity>
       <Portal>
@@ -140,11 +137,17 @@ const FilterCard = memo(function FilterCard({
   }) => void;
 }) {
   const [search, setSearch] = useState("");
-  const [assigned, setAssigned] = useState<{ label: string; value: string } | null>(null);
-  const [loan, setLoan] = useState<{ label: string; value: string } | null>(null);
-  const [bank, setBank] = useState<{ label: string; value: string } | null>(null);
+  const [assigned, setAssigned] = useState<{
+    label: string;
+    value: string;
+  } | null>(null);
+  const [loan, setLoan] = useState<{ label: string; value: string } | null>(
+    null
+  );
+  const [bank, setBank] = useState<{ label: string; value: string } | null>(
+    null
+  );
 
-  // Live filter (debounced)
   useEffect(() => {
     const timer = setTimeout(() => {
       applyFilters({ search, assigned, loan, bank });
@@ -153,11 +156,11 @@ const FilterCard = memo(function FilterCard({
   }, [search, assigned, loan, bank, applyFilters]);
 
   return (
-    <Card style={styles.filterCard}>
+    <Card style={[styles.filterCard, { backgroundColor: COLORS.card }]}>
       <Card.Title
         title="Filters"
-        left={() => <SlidersHorizontal size={18} color="#60A5FA" />}
-        titleStyle={{ color: "#FFFFFF", fontWeight: "700" }}
+        left={() => <SlidersHorizontal size={18} color={COLORS.primary} />}
+        titleStyle={{ color: COLORS.textPrimary, fontWeight: "700" }}
       />
       <Card.Content>
         <TextInput
@@ -166,8 +169,10 @@ const FilterCard = memo(function FilterCard({
           onChangeText={setSearch}
           mode="outlined"
           style={styles.searchInput}
-          textColor="#FFFFFF"
-          underlineColor="transparent"
+          textColor={COLORS.textPrimary}
+          placeholderTextColor={COLORS.textSecondary}
+          outlineColor={COLORS.border}
+          activeOutlineColor={COLORS.primary}
           blurOnSubmit={false}
         />
         {profile?.role !== "agent" && (
@@ -192,7 +197,9 @@ const FilterCard = memo(function FilterCard({
           options={bankOptions}
           onSelect={setBank}
         />
-        <Divider style={{ marginVertical: 8, backgroundColor: "#1F2937" }} />
+        <Divider
+          style={{ marginVertical: 8, backgroundColor: COLORS.border }}
+        />
       </Card.Content>
     </Card>
   );
@@ -202,16 +209,6 @@ const FilterCard = memo(function FilterCard({
 export default function ViewCasesScreen() {
   type Nav = NativeStackNavigationProp<RootStackParamList, "ViewCases">;
   const navigation = useNavigation<Nav>();
-
-  const colors = {
-    bg: "#0B1220",
-    card: "#111827",
-    border: "#1F2937",
-    text: "#FFFFFF",
-    subText: "#A7B1C2",
-    primary: "#60A5FA",
-    accent: "#34D399",
-  };
 
   const [loading, setLoading] = useState(true);
   const [cases, setCases] = useState<Case[]>([]);
@@ -260,21 +257,24 @@ export default function ViewCasesScreen() {
     load();
   }, []);
 
-  // Dropdown options
   const loanOptions = useMemo(
     () =>
-      Array.from(new Set(cases.map((c) => c.loan_type).filter(Boolean))).map((v) => ({
-        label: v!,
-        value: v!,
-      })),
+      Array.from(new Set(cases.map((c) => c.loan_type).filter(Boolean))).map(
+        (v) => ({
+          label: v!,
+          value: v!,
+        })
+      ),
     [cases]
   );
   const bankOptions = useMemo(
     () =>
-      Array.from(new Set(cases.map((c) => c.bank).filter(Boolean))).map((v) => ({
-        label: v!,
-        value: v!,
-      })),
+      Array.from(new Set(cases.map((c) => c.bank).filter(Boolean))).map(
+        (v) => ({
+          label: v!,
+          value: v!,
+        })
+      ),
     [cases]
   );
   const assignedOptions = useMemo(
@@ -282,7 +282,6 @@ export default function ViewCasesScreen() {
     [agencyUsers]
   );
 
-  // Apply filters (called by FilterCard)
   const applyFilters = useCallback(
     (filters: {
       search: string;
@@ -297,7 +296,8 @@ export default function ViewCasesScreen() {
           c.account_name?.toLowerCase().includes(q) ||
           c.customer_name?.toLowerCase().includes(q) ||
           c.case_id?.toLowerCase().includes(q);
-        const assignedMatch = !filters.assigned || c.assigned_to === filters.assigned.value;
+        const assignedMatch =
+          !filters.assigned || c.assigned_to === filters.assigned.value;
         const loanMatch = !filters.loan || c.loan_type === filters.loan.value;
         const bankMatch = !filters.bank || c.bank === filters.bank.value;
         return textMatch && assignedMatch && loanMatch && bankMatch;
@@ -307,27 +307,34 @@ export default function ViewCasesScreen() {
     []
   );
 
-  // Render case card
   const renderCase = useCallback(
     ({ item }: { item: Case }) => (
       <TouchableOpacity
         activeOpacity={0.9}
         onPress={() =>
-            navigation.navigate("CaseDetails", { caseId: String(item.id) })
-          }
+          navigation.navigate("CaseDetails", { caseId: String(item.id) })
+        }
         style={styles.touchWrap}
       >
-        <Card style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Card
+          style={[
+            styles.card,
+            {
+              backgroundColor: COLORS.card,
+              borderColor: COLORS.border,
+            },
+          ]}
+        >
           <Card.Title
             title={item.account_name || "Unknown Account"}
             subtitle={`${item.bank || "Unknown Bank"} • ${item.branch || "—"}`}
-            titleStyle={{ color: colors.text, fontWeight: "700" }}
-            subtitleStyle={{ color: colors.subText }}
-            left={() => <User2 size={22} color={colors.primary} />}
+            titleStyle={{ color: COLORS.textPrimary, fontWeight: "700" }}
+            subtitleStyle={{ color: COLORS.textSecondary }}
+            left={() => <User2 size={22} color={COLORS.primary} />}
             right={() => (
               <Chip
-                style={[styles.statusChip, { backgroundColor: colors.accent }]}
-                textStyle={{ color: "#0B1220", fontWeight: "700" }}
+                style={[styles.statusChip, { backgroundColor: COLORS.success }]}
+                textStyle={{ color: COLORS.textLight, fontWeight: "700" }}
               >
                 {(item.status || "OPEN").toUpperCase()}
               </Chip>
@@ -335,14 +342,16 @@ export default function ViewCasesScreen() {
           />
           <Card.Content>
             <View style={styles.row}>
-              <Banknote size={18} color={colors.primary} />
-              <Paragraph style={{ color: colors.text }}>
+              <Banknote size={18} color={COLORS.primary} />
+              <Paragraph style={{ color: COLORS.textPrimary }}>
                 Pending: ₹{item.pending_balance ?? 0}
               </Paragraph>
             </View>
             <View style={styles.row}>
-              <Building2 size={18} color={colors.primary} />
-              <Paragraph style={{ color: colors.subText }}>Case ID: {item.case_id}</Paragraph>
+              <Building2 size={18} color={COLORS.primary} />
+              <Paragraph style={{ color: COLORS.textSecondary }}>
+                Case ID: {item.case_id}
+              </Paragraph>
             </View>
           </Card.Content>
         </Card>
@@ -365,8 +374,10 @@ export default function ViewCasesScreen() {
         removeClippedSubviews={false}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Layers size={48} color="#A7B1C2" />
-            <Paragraph style={{ color: "#A7B1C2", marginTop: 8 }}>No cases found</Paragraph>
+            <Layers size={48} color={COLORS.textSecondary} />
+            <Paragraph style={{ color: COLORS.textSecondary, marginTop: 8 }}>
+              No cases found
+            </Paragraph>
           </View>
         }
       />
@@ -376,9 +387,9 @@ export default function ViewCasesScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: colors.bg }}
+      style={{ flex: 1, backgroundColor: COLORS.bg }}
     >
-      <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      <View style={[styles.container, { backgroundColor: COLORS.bg }]}>
         <FilterCard
           profile={profile}
           assignedOptions={assignedOptions}
@@ -387,7 +398,11 @@ export default function ViewCasesScreen() {
           applyFilters={applyFilters}
         />
         {loading ? (
-          <ActivityIndicator style={{ marginTop: 40 }} size="large" color={colors.primary} />
+          <ActivityIndicator
+            style={{ marginTop: 40 }}
+            size="large"
+            color={COLORS.primary}
+          />
         ) : (
           <CasesList data={filteredCases} />
         )}
@@ -403,10 +418,15 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     borderRadius: 12,
     elevation: 3,
-    backgroundColor: "#111827",
   },
-  filterInput: { marginBottom: 10, backgroundColor: "#1E293B" },
-  searchInput: { marginBottom: 10, backgroundColor: "#1E293B" },
+  filterInput: {
+    marginBottom: 10,
+    backgroundColor: COLORS.cardAlt,
+  },
+  searchInput: {
+    marginBottom: 10,
+    backgroundColor: COLORS.cardAlt,
+  },
   dropdownItem: { paddingVertical: 10 },
   gridRow: { justifyContent: "space-between", gap: 12 },
   touchWrap: { flex: 1, marginHorizontal: 6 },
