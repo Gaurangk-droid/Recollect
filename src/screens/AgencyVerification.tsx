@@ -13,6 +13,7 @@ import { supabase } from "../lib/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
+import { Pressable } from "react-native";
 import { globalStyles } from "../styles/globalStyles";
 import { COLORS } from "../styles/theme";
 
@@ -88,7 +89,7 @@ export default function AgencyVerificationScreen() {
               if (error) setError("");
             }}
             mode="outlined"
-            autoCapitalize="characters"
+            autoCapitalize="none"
             autoCorrect={false}
             maxLength={20}
             style={[globalStyles.input, { width: "100%" }]}
@@ -107,22 +108,30 @@ export default function AgencyVerificationScreen() {
             <Text style={{ color: COLORS.danger, marginTop: 8 }}>{error}</Text>
           ) : null}
 
-          <Button
-          mode="contained"
-          onPress={handleVerify}
-          loading={loading}
-          disabled={loading || !agencyCode.trim()}
-          style={[globalStyles.button, { width: "100%", alignSelf: "stretch" }]}
-          contentStyle={{
-            height: 50,                 // ensures ripple fills full height
-            justifyContent: "center",
-          }}
-          labelStyle={globalStyles.buttonText}
-          buttonColor={COLORS.primary}
-        >
-          {loading ? "Verifying..." : "Verify Agency"}
-        </Button>
-
+          <View style={{ width: "100%", alignItems: "center", marginTop: 20 }}>
+            <Pressable
+              onPress={handleVerify}
+              disabled={loading || !agencyCode.trim()}
+              style={({ pressed }) => {
+                const isDisabled = loading || !agencyCode.trim();
+                return [
+                  globalStyles.button,
+                  {
+                    width: "100%",
+                    maxWidth: 400,
+                    backgroundColor: isDisabled
+                      ? COLORS.disabled || "#B0B0B0" // fallback grey if not defined
+                      : COLORS.primary,
+                    opacity: pressed ? 0.8 : 1,
+                  },
+                ];
+              }}
+            >
+              <Text style={globalStyles.buttonText}>
+                {loading ? "Verifying..." : "Verify Agency"}
+              </Text>
+            </Pressable>
+          </View>
         </Surface>
       </ScrollView>
     </KeyboardAvoidingView>

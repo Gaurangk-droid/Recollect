@@ -1,16 +1,17 @@
 import React, { useState } from "react";
 import {
   View,
+  Text,
   Alert,
-  StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Pressable,
 } from "react-native";
 import {
   TextInput,
-  Button,
   Title,
   Paragraph,
   Surface,
@@ -38,11 +39,30 @@ export default function LoginScreen({ route }: Props) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      return Alert.alert("Please enter both email and password.");
+    let valid = true;
+
+    if (!email.trim()) {
+      setEmailError("Please enter your email.");
+      valid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setEmailError("Please enter a valid email address.");
+      valid = false;
+    } else {
+      setEmailError("");
     }
+
+    if (!password.trim()) {
+      setPasswordError("Please enter your password.");
+      valid = false;
+    } else {
+      setPasswordError("");
+    }
+
+    if (!valid) return;
 
     setLoading(true);
     try {
@@ -54,7 +74,8 @@ export default function LoginScreen({ route }: Props) {
 
       if (authError || !authData.user) {
         setLoading(false);
-        return Alert.alert("Login failed", "Invalid email or password.");
+        setPasswordError("Invalid email or password.");
+        return;
       }
 
       const { data: userRow, error: userError } = await supabase
@@ -65,16 +86,18 @@ export default function LoginScreen({ route }: Props) {
 
       if (userError || !userRow) {
         setLoading(false);
-        return Alert.alert("Error", "User profile not found.");
+        Alert.alert("Error", "User profile not found.");
+        return;
       }
 
       if (userRow.agency_id !== verifiedAgencyCode) {
         await supabase.auth.signOut();
         setLoading(false);
-        return Alert.alert(
+        Alert.alert(
           "Access denied",
           "This account is not linked to your agency."
         );
+        return;
       }
 
       setLoading(false);
@@ -103,14 +126,18 @@ export default function LoginScreen({ route }: Props) {
         <Surface style={globalStyles.card}>
           <Title style={globalStyles.title}>Agent Login</Title>
           <Paragraph style={globalStyles.subtitle}>
-            Welcome back. Please enter your credentials to access your dashboard.
+            Welcome back. Please enter your credentials to access your
+            dashboard.
           </Paragraph>
 
           {/* Email Field */}
           <TextInput
             label="Email"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (emailError) setEmailError("");
+            }}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
@@ -119,13 +146,19 @@ export default function LoginScreen({ route }: Props) {
             outlineColor={COLORS.border}
             activeOutlineColor={COLORS.primary}
           />
+          {emailError ? (
+            <Text style={styles.errorText}>{emailError}</Text>
+          ) : null}
 
           {/* Password Field */}
           <View style={styles.passwordContainer}>
             <TextInput
               label="Password"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (passwordError) setPasswordError("");
+              }}
               secureTextEntry={!showPassword}
               autoCapitalize="none"
               autoCorrect={false}
@@ -145,19 +178,30 @@ export default function LoginScreen({ route }: Props) {
               />
             </TouchableOpacity>
           </View>
+          {passwordError ? (
+            <Text style={styles.errorText}>{passwordError}</Text>
+          ) : null}
 
-          <Button
-            mode="contained"
-            onPress={handleLogin}
-            loading={loading}
-            disabled={loading}
-            style={globalStyles.button}
-            buttonColor={COLORS.primary}
-            contentStyle={{ paddingVertical: 6 }}
-            labelStyle={globalStyles.buttonText}
-          >
-            {loading ? "Logging in..." : "Login"}
-          </Button>
+          {/* Login Button */}
+          <View style={{ width: "100%", alignItems: "center", marginTop: 20 }}>
+            <Pressable
+              onPress={handleLogin}
+              disabled={loading}
+              style={({ pressed }) => [
+                globalStyles.button,
+                {
+                  width: "100%",
+                  maxWidth: 400,
+                  opacity: pressed || loading ? 0.8 : 1,
+                  backgroundColor: COLORS.primary,
+                },
+              ]}
+            >
+              <Text style={globalStyles.buttonText}>
+                {loading ? "Logging in..." : "Login"}
+              </Text>
+            </Pressable>
+          </View>
 
           {loading && (
             <ActivityIndicator
@@ -188,5 +232,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 16,
     top: 30,
+  },
+  errorText: {
+    color: COLORS.danger,
+    marginTop: 6,
+    alignSelf: "flex-start",
   },
 });

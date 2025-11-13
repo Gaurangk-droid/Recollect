@@ -26,8 +26,8 @@ export const globalStyles = StyleSheet.create({
   borderRadius: 10,
   alignItems: "center",
   justifyContent: "center",
-  marginTop: 12,
-  width: "100%",          // ensures full clickable width
+   marginTop: 12,
+  width: "100%",
   alignSelf: "stretch",   // fills parent container
   overflow: "hidden",     // lets ripple effect show fully
   minHeight: 48,          // consistent height across screens

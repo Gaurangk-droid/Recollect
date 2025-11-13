@@ -44,7 +44,7 @@ export default function HeaderBar({
       // Navigate to Login screen
       navigation.reset({
         index: 0,
-        routes: [{ name: "Login" }],
+        routes: [{ name: "AgencyVerification" }],
       });
     } catch (error) {
       console.log("Logout failed:", error);
