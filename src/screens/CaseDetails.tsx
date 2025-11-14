@@ -130,9 +130,12 @@ export default function CaseDetailsV2() {
           </View>
 
           <View style={styles.actionRow}>
+
+          {currentUser?.role === "manager" && (<>
+
             <Button
-              mode="outlined"
-              textColor="#004AAD"
+              mode="contained"
+              buttonColor="#130848ff"
               onPress={() => setShowTransfer(true)}
               icon="swap-horizontal"
             >
@@ -141,7 +144,7 @@ export default function CaseDetailsV2() {
 
             <Button
               mode="contained"
-              buttonColor="#0ea5e9"
+              buttonColor="#05ae54ff"
               icon="pencil"
               onPress={() =>
                 navigation.navigate("UpdateCase", {
@@ -152,9 +155,13 @@ export default function CaseDetailsV2() {
               Update
             </Button>
 
+            </>
+            )}
+
+
             <Button
               mode="contained"
-              buttonColor="#e11d48"
+              buttonColor="#e11d1dff"
               icon="close"
               onPress={() => navigation.goBack()}
             >
