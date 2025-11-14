@@ -12,6 +12,8 @@ import LoginScreen from "../screens/Login";
 import ViewCasesScreen from "../screens/ViewCases";
 import CaseDetails from "../screens/CaseDetails";
 import MainLayout from "../layouts/MainLayout";
+import UpdateCase from "../screens/UpdateCase";
+
 
 // ✅ Navigation types
 export type RootStackParamList = {
@@ -24,6 +26,7 @@ export type RootStackParamList = {
   Calendar: undefined;
   Reports: undefined;
   CaseDetails: { caseData?: any; caseId?: string }; // ✅ ← closed properly
+  UpdateCase: { caseId: string };
 };
 
 // ✅ Create Stack
@@ -79,6 +82,14 @@ export default function AppNavigator() {
             </MainLayout>
           )}
         </Stack.Screen>
+
+        <Stack.Screen name="UpdateCase">
+            {() => (
+              <MainLayout>
+                <UpdateCase />
+              </MainLayout>
+            )}
+          </Stack.Screen>
 
         <Stack.Screen name="CaseDetails">
           {() => (
