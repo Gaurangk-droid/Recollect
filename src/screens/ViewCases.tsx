@@ -1,4 +1,11 @@
-import React, { useEffect, useState, useMemo, useCallback, memo } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+  memo,
+  useRef,
+} from "react";
 import {
   View,
   FlatList,
@@ -65,51 +72,84 @@ function Dropdown({
   options: { label: string; value: string }[];
 }) {
   const [visible, setVisible] = useState(false);
+
   return (
     <>
-      <TouchableOpacity onPress={() => setVisible(true)} activeOpacity={0.8}>
+      <TouchableOpacity
+        onPress={() => setVisible(true)}
+        activeOpacity={0.7}
+        style={{ width: "100%" }}
+      >
         <TextInput
           label={label}
           mode="outlined"
           value={valueLabel || "All"}
           editable={false}
-          right={<TextInput.Icon icon="menu-down" />}
+          right={<TextInput.Icon icon="chevron-down" />}
           style={styles.filterInput}
-          textColor={COLORS.textPrimary}
           outlineColor={COLORS.border}
           activeOutlineColor={COLORS.primary}
+          textColor={COLORS.textPrimary}
         />
       </TouchableOpacity>
+
       <Portal>
-        <Dialog visible={visible} onDismiss={() => setVisible(false)}>
-          <Dialog.Title>{label}</Dialog.Title>
-          <Dialog.Content>
-            <TouchableOpacity
-              onPress={() => {
-                onSelect(null);
-                setVisible(false);
-              }}
-              style={styles.dropdownItem}
-            >
-              <Paragraph>All</Paragraph>
-              <Divider />
-            </TouchableOpacity>
-            {options.map((opt) => (
+        <Dialog
+          visible={visible}
+          onDismiss={() => setVisible(false)}
+          style={{
+            borderRadius: 16,
+            backgroundColor: COLORS.card,
+          }}
+        >
+          <Dialog.Title
+            style={{ color: COLORS.textPrimary, fontWeight: "700" }}
+          >
+            {label}
+          </Dialog.Title>
+
+          <Dialog.ScrollArea style={{ maxHeight: 320 }}>
+            <View style={{ paddingHorizontal: 4 }}>
+              {/* All option */}
               <TouchableOpacity
-                key={opt.value}
                 onPress={() => {
-                  onSelect(opt);
+                  onSelect(null);
                   setVisible(false);
                 }}
-                style={styles.dropdownItem}
+                activeOpacity={0.7}
+                style={styles.popupItem}
               >
-                <Paragraph>{opt.label}</Paragraph>
-                <Divider />
+                <Paragraph style={styles.popupText}>All</Paragraph>
               </TouchableOpacity>
-            ))}
-          </Dialog.Content>
+
+              <Divider />
+
+              {/* Options */}
+              {options.map((opt) => (
+                <View key={opt.value}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      onSelect(opt);
+                      setVisible(false);
+                    }}
+                    activeOpacity={0.7}
+                    style={styles.popupItem}
+                  >
+                    <Paragraph style={styles.popupText}>{opt.label}</Paragraph>
+                  </TouchableOpacity>
+                  <Divider />
+                </View>
+              ))}
+            </View>
+          </Dialog.ScrollArea>
+
           <Dialog.Actions>
-            <Button onPress={() => setVisible(false)}>Close</Button>
+            <Button
+              textColor={COLORS.primary}
+              onPress={() => setVisible(false)}
+            >
+              Close
+            </Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -117,64 +157,42 @@ function Dropdown({
   );
 }
 
-// ---------- Filter Card ----------
+// ---------- Filter Card (presentational: no search) ----------
 const FilterCard = memo(function FilterCard({
   profile,
   assignedOptions,
   loanOptions,
   bankOptions,
-  applyFilters,
+  assigned,
+  setAssigned,
+  loan,
+  setLoan,
+  bank,
+  setBank,
+  globalSetSearch, // <-- NEW
+  applyFilters, // <-- NEW
 }: {
   profile: UserRow | null;
   assignedOptions: { label: string; value: string }[];
   loanOptions: { label: string; value: string }[];
   bankOptions: { label: string; value: string }[];
-  applyFilters: (filters: {
+  assigned: { label: string; value: string } | null;
+  setAssigned: (v: { label: string; value: string } | null) => void;
+  loan: { label: string; value: string } | null;
+  setLoan: (v: { label: string; value: string } | null) => void;
+  bank: { label: string; value: string } | null;
+  setBank: (v: { label: string; value: string } | null) => void;
+  globalSetSearch: (v: string) => void; // <-- NEW
+  applyFilters: (f: {
     search: string;
     assigned: { label: string; value: string } | null;
     loan: { label: string; value: string } | null;
     bank: { label: string; value: string } | null;
-  }) => void;
+  }) => void; // <-- NEW
 }) {
-  const [search, setSearch] = useState("");
-  const [assigned, setAssigned] = useState<{
-    label: string;
-    value: string;
-  } | null>(null);
-  const [loan, setLoan] = useState<{ label: string; value: string } | null>(
-    null
-  );
-  const [bank, setBank] = useState<{ label: string; value: string } | null>(
-    null
-  );
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      applyFilters({ search, assigned, loan, bank });
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [search, assigned, loan, bank, applyFilters]);
-
   return (
     <Card style={[styles.filterCard, { backgroundColor: COLORS.card }]}>
-      <Card.Title
-        title="Filters"
-        left={() => <SlidersHorizontal size={18} color={COLORS.primary} />}
-        titleStyle={{ color: COLORS.textPrimary, fontWeight: "700" }}
-      />
       <Card.Content>
-        <TextInput
-          placeholder="Search by Name, Account, or Case ID"
-          value={search}
-          onChangeText={setSearch}
-          mode="outlined"
-          style={styles.searchInput}
-          textColor={COLORS.textPrimary}
-          placeholderTextColor={COLORS.textSecondary}
-          outlineColor={COLORS.border}
-          activeOutlineColor={COLORS.primary}
-          blurOnSubmit={false}
-        />
         {profile?.role !== "agent" && (
           <Dropdown
             label="Assigned To"
@@ -200,6 +218,30 @@ const FilterCard = memo(function FilterCard({
         <Divider
           style={{ marginVertical: 8, backgroundColor: COLORS.border }}
         />
+        {/* --- Clear Filters Button --- */}
+        <TouchableOpacity
+          style={styles.clearFilterBtn}
+          activeOpacity={0.8}
+          onPress={() => {
+            setAssigned(null);
+            setLoan(null);
+            setBank(null);
+
+            // parent search reset
+            // (must be passed down from parent)
+            if (typeof globalSetSearch === "function") globalSetSearch("");
+
+            // apply instantly
+            applyFilters({
+              search: "",
+              assigned: null,
+              loan: null,
+              bank: null,
+            });
+          }}
+        >
+          <Paragraph style={styles.clearFilterText}>Clear Filters</Paragraph>
+        </TouchableOpacity>
       </Card.Content>
     </Card>
   );
@@ -215,7 +257,22 @@ export default function ViewCasesScreen() {
   const [filteredCases, setFilteredCases] = useState<Case[]>([]);
   const [profile, setProfile] = useState<UserRow | null>(null);
   const [agencyUsers, setAgencyUsers] = useState<UserRow[]>([]);
-  const casesRef = React.useRef<Case[]>([]);
+  const casesRef = useRef<Case[]>([]);
+
+  // === lifted filter states ===
+  const [search, setSearch] = useState("");
+  const [assigned, setAssigned] = useState<{
+    label: string;
+    value: string;
+  } | null>(null);
+  const [loan, setLoan] = useState<{ label: string; value: string } | null>(
+    null
+  );
+  const [bank, setBank] = useState<{ label: string; value: string } | null>(
+    null
+  );
+
+  const [filterVisible, setFilterVisible] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -282,6 +339,7 @@ export default function ViewCasesScreen() {
     [agencyUsers]
   );
 
+  // core filter function (same signature)
   const applyFilters = useCallback(
     (filters: {
       search: string;
@@ -306,6 +364,14 @@ export default function ViewCasesScreen() {
     },
     []
   );
+
+  // Debounce applyFilters whenever any filter changes (search/assigned/loan/bank)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      applyFilters({ search, assigned, loan, bank });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search, assigned, loan, bank, applyFilters]);
 
   const renderCase = useCallback(
     ({ item }: { item: Case }) => (
@@ -390,13 +456,53 @@ export default function ViewCasesScreen() {
       style={{ flex: 1, backgroundColor: COLORS.bg }}
     >
       <View style={[styles.container, { backgroundColor: COLORS.bg }]}>
-        <FilterCard
-          profile={profile}
-          assignedOptions={assignedOptions}
-          loanOptions={loanOptions}
-          bankOptions={bankOptions}
-          applyFilters={applyFilters}
+        {/* --- Always-visible search input --- */}
+        <TextInput
+          placeholder="Search by Name, Account, or Case ID"
+          value={search}
+          onChangeText={setSearch}
+          mode="outlined"
+          style={styles.searchInputAlways}
+          textColor={COLORS.textPrimary}
+          placeholderTextColor={COLORS.textSecondary}
+          outlineColor={COLORS.border}
+          activeOutlineColor={COLORS.primary}
+          returnKeyType="search"
+          blurOnSubmit={true}
         />
+
+        {/* --- Toggle button (full-width below search) --- */}
+        <View style={styles.filterToggleWrap}>
+          <TouchableOpacity
+            style={styles.filterToggleButton}
+            activeOpacity={0.85}
+            onPress={() => setFilterVisible((prev) => !prev)}
+          >
+            <SlidersHorizontal size={18} color={COLORS.textLight} />
+            <Paragraph style={styles.filterToggleText}>
+              {filterVisible ? "Hide Filters" : "Show Filters"}
+            </Paragraph>
+          </TouchableOpacity>
+        </View>
+
+        {/* --- Filter card (only dropdowns) --- */}
+        {filterVisible && (
+          <FilterCard
+            profile={profile}
+            assignedOptions={assignedOptions}
+            loanOptions={loanOptions}
+            bankOptions={bankOptions}
+            assigned={assigned}
+            setAssigned={setAssigned}
+            loan={loan}
+            setLoan={setLoan}
+            bank={bank}
+            setBank={setBank}
+            globalSetSearch={setSearch} // NEW
+            applyFilters={applyFilters} // NEW
+          />
+        )}
+
         {loading ? (
           <ActivityIndicator
             style={{ marginTop: 40 }}
@@ -413,31 +519,141 @@ export default function ViewCasesScreen() {
 
 // ---------- Styles ----------
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  filterCard: {
-    marginBottom: 14,
-    borderRadius: 12,
-    elevation: 3,
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: COLORS.bg,
   },
+
+  // --- Search Bar ---
+  searchInputAlways: {
+    backgroundColor: COLORS.card,
+    height: 48,
+    borderRadius: 12,
+    marginBottom: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+
+  // --- Filter Toggle Button ---
+  filterToggleWrap: {
+    width: "100%",
+    marginBottom: 12,
+    alignItems: "center",
+  },
+
+  filterToggleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 40,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+
+  filterToggleText: {
+    color: COLORS.textLight,
+    marginLeft: 8,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+
+  // --- Filter Card ---
+  filterCard: {
+    borderRadius: 14,
+    backgroundColor: COLORS.card,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+
   filterInput: {
     marginBottom: 10,
+    height: 46,
+    borderRadius: 10,
     backgroundColor: COLORS.cardAlt,
   },
-  searchInput: {
-    marginBottom: 10,
-    backgroundColor: COLORS.cardAlt,
+
+  // Clear Filters Button (top-right inside card)
+  clearFilterBtn: {
+    alignSelf: "flex-end",
+    marginTop: 4,
+    marginBottom: 4,
+    backgroundColor: COLORS.danger,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
-  dropdownItem: { paddingVertical: 10 },
-  gridRow: { justifyContent: "space-between", gap: 12 },
+
+  clearFilterText: {
+    color: COLORS.textLight,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+
+  // Dropdown popup items
+  popupItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+  },
+  popupText: {
+    color: COLORS.textPrimary,
+    fontSize: 16,
+  },
+
+  // --- Case Cards ---
   touchWrap: { flex: 1, marginHorizontal: 6 },
+
   card: {
     flex: 1,
-    borderRadius: 14,
-    marginBottom: 14,
+    borderRadius: 16,
+    marginBottom: 16,
+    backgroundColor: COLORS.card,
     borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
     overflow: "hidden",
   },
-  row: { flexDirection: "row", alignItems: "center", gap: 8 },
-  statusChip: { height: 28, alignItems: "center" },
-  empty: { alignItems: "center", marginTop: 60 },
+
+  statusChip: {
+    height: 28,
+    alignItems: "center",
+    paddingHorizontal: 10,
+  },
+
+  // Card rows
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
+  },
+
+  // Grid (web)
+  gridRow: {
+    justifyContent: "space-between",
+    gap: 12,
+  },
+
+  // Empty state
+  empty: {
+    alignItems: "center",
+    marginTop: 80,
+  },
 });
