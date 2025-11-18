@@ -1,3 +1,4 @@
+// src/screens/ViewCasesScreen.tsx
 import React, {
   useEffect,
   useState,
@@ -13,6 +14,8 @@ import {
   StyleSheet,
   Platform,
   KeyboardAvoidingView,
+  useWindowDimensions,
+  TextInput as RNTextInput,
 } from "react-native";
 import {
   Card,
@@ -22,8 +25,9 @@ import {
   Button,
   Divider,
   Paragraph,
-  Dialog,
   Portal,
+  Dialog,
+  Surface,
 } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
 import { supabase } from "../lib/supabaseClient";
@@ -38,6 +42,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { COLORS } from "../styles/theme";
 
+/* ---------- Types ---------- */
 type Case = {
   id: string;
   case_id: string;
@@ -59,198 +64,12 @@ type UserRow = {
   agency_id: string | null;
 };
 
-// ---------- Dropdown ----------
-function Dropdown({
-  label,
-  valueLabel,
-  onSelect,
-  options,
-}: {
-  label: string;
-  valueLabel: string;
-  onSelect: (v: { label: string; value: string } | null) => void;
-  options: { label: string; value: string }[];
-}) {
-  const [visible, setVisible] = useState(false);
-
-  return (
-    <>
-      <TouchableOpacity
-        onPress={() => setVisible(true)}
-        activeOpacity={0.7}
-        style={{ width: "100%" }}
-      >
-        <TextInput
-          label={label}
-          mode="outlined"
-          value={valueLabel || "All"}
-          editable={false}
-          right={<TextInput.Icon icon="chevron-down" />}
-          style={styles.filterInput}
-          outlineColor={COLORS.border}
-          activeOutlineColor={COLORS.primary}
-          textColor={COLORS.textPrimary}
-        />
-      </TouchableOpacity>
-
-      <Portal>
-        <Dialog
-          visible={visible}
-          onDismiss={() => setVisible(false)}
-          style={{
-            borderRadius: 16,
-            backgroundColor: COLORS.card,
-          }}
-        >
-          <Dialog.Title
-            style={{ color: COLORS.textPrimary, fontWeight: "700" }}
-          >
-            {label}
-          </Dialog.Title>
-
-          <Dialog.ScrollArea style={{ maxHeight: 320 }}>
-            <View style={{ paddingHorizontal: 4 }}>
-              {/* All option */}
-              <TouchableOpacity
-                onPress={() => {
-                  onSelect(null);
-                  setVisible(false);
-                }}
-                activeOpacity={0.7}
-                style={styles.popupItem}
-              >
-                <Paragraph style={styles.popupText}>All</Paragraph>
-              </TouchableOpacity>
-
-              <Divider />
-
-              {/* Options */}
-              {options.map((opt) => (
-                <View key={opt.value}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      onSelect(opt);
-                      setVisible(false);
-                    }}
-                    activeOpacity={0.7}
-                    style={styles.popupItem}
-                  >
-                    <Paragraph style={styles.popupText}>{opt.label}</Paragraph>
-                  </TouchableOpacity>
-                  <Divider />
-                </View>
-              ))}
-            </View>
-          </Dialog.ScrollArea>
-
-          <Dialog.Actions>
-            <Button
-              textColor={COLORS.primary}
-              onPress={() => setVisible(false)}
-            >
-              Close
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
-    </>
-  );
-}
-
-// ---------- Filter Card (presentational: no search) ----------
-const FilterCard = memo(function FilterCard({
-  profile,
-  assignedOptions,
-  loanOptions,
-  bankOptions,
-  assigned,
-  setAssigned,
-  loan,
-  setLoan,
-  bank,
-  setBank,
-  globalSetSearch, // <-- NEW
-  applyFilters, // <-- NEW
-}: {
-  profile: UserRow | null;
-  assignedOptions: { label: string; value: string }[];
-  loanOptions: { label: string; value: string }[];
-  bankOptions: { label: string; value: string }[];
-  assigned: { label: string; value: string } | null;
-  setAssigned: (v: { label: string; value: string } | null) => void;
-  loan: { label: string; value: string } | null;
-  setLoan: (v: { label: string; value: string } | null) => void;
-  bank: { label: string; value: string } | null;
-  setBank: (v: { label: string; value: string } | null) => void;
-  globalSetSearch: (v: string) => void; // <-- NEW
-  applyFilters: (f: {
-    search: string;
-    assigned: { label: string; value: string } | null;
-    loan: { label: string; value: string } | null;
-    bank: { label: string; value: string } | null;
-  }) => void; // <-- NEW
-}) {
-  return (
-    <Card style={[styles.filterCard, { backgroundColor: COLORS.card }]}>
-      <Card.Content>
-        {profile?.role !== "agent" && (
-          <Dropdown
-            label="Assigned To"
-            valueLabel={assigned?.label || ""}
-            options={assignedOptions}
-            onSelect={setAssigned}
-          />
-        )}
-        {profile?.role !== "agent" && (
-          <Dropdown
-            label="Loan Type"
-            valueLabel={loan?.label || ""}
-            options={loanOptions}
-            onSelect={setLoan}
-          />
-        )}
-        <Dropdown
-          label="Bank"
-          valueLabel={bank?.label || ""}
-          options={bankOptions}
-          onSelect={setBank}
-        />
-        <Divider
-          style={{ marginVertical: 8, backgroundColor: COLORS.border }}
-        />
-        {/* --- Clear Filters Button --- */}
-        <TouchableOpacity
-          style={styles.clearFilterBtn}
-          activeOpacity={0.8}
-          onPress={() => {
-            setAssigned(null);
-            setLoan(null);
-            setBank(null);
-
-            // parent search reset
-            // (must be passed down from parent)
-            if (typeof globalSetSearch === "function") globalSetSearch("");
-
-            // apply instantly
-            applyFilters({
-              search: "",
-              assigned: null,
-              loan: null,
-              bank: null,
-            });
-          }}
-        >
-          <Paragraph style={styles.clearFilterText}>Clear Filters</Paragraph>
-        </TouchableOpacity>
-      </Card.Content>
-    </Card>
-  );
-});
-
-// ---------- Main ----------
+/* ---------- Main Screen ---------- */
 export default function ViewCasesScreen() {
   type Nav = NativeStackNavigationProp<RootStackParamList, "ViewCases">;
   const navigation = useNavigation<Nav>();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900; // breakpoint
 
   const [loading, setLoading] = useState(true);
   const [cases, setCases] = useState<Case[]>([]);
@@ -259,8 +78,8 @@ export default function ViewCasesScreen() {
   const [agencyUsers, setAgencyUsers] = useState<UserRow[]>([]);
   const casesRef = useRef<Case[]>([]);
 
-  // === lifted filter states ===
-  const [search, setSearch] = useState("");
+  // FILTER STATES (applied state)
+  const [appliedSearch, setAppliedSearch] = useState(""); // used for applyFilters and to show cleared state
   const [assigned, setAssigned] = useState<{
     label: string;
     value: string;
@@ -273,6 +92,20 @@ export default function ViewCasesScreen() {
   );
 
   const [filterVisible, setFilterVisible] = useState(false);
+
+  // live typing ref + input ref (uncontrolled input)
+  const searchRef = useRef<string>("");
+  const inputRef = useRef<RNTextInput | null>(null);
+
+  // Dropdown modal state (shared)
+  const [activeDropdown, setActiveDropdown] = useState<
+    "assigned" | "loan" | "bank" | null
+  >(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalOptions, setModalOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
+  const [modalTitle, setModalTitle] = useState<string>("");
 
   useEffect(() => {
     const load = async () => {
@@ -290,19 +123,20 @@ export default function ViewCasesScreen() {
         setProfile(prof as UserRow);
 
         let q = supabase.from("cases").select("*");
-        if (prof.role === "agent") q = q.eq("assigned_to", prof.id);
-        else q = q.eq("agency_id", prof.agency_id);
+        if ((prof as UserRow).role === "agent")
+          q = q.eq("assigned_to", (prof as UserRow).id);
+        else q = q.eq("agency_id", (prof as UserRow).agency_id);
         const { data: caseData } = await q;
         const list = (caseData || []) as Case[];
         casesRef.current = list;
         setCases(list);
         setFilteredCases(list);
 
-        if (prof.agency_id) {
+        if ((prof as UserRow).agency_id) {
           const { data: usersData } = await supabase
             .from("users")
             .select("id,name,role,agency_id")
-            .eq("agency_id", prof.agency_id);
+            .eq("agency_id", (prof as UserRow).agency_id);
           setAgencyUsers((usersData || []) as UserRow[]);
         }
       } catch (err) {
@@ -317,20 +151,14 @@ export default function ViewCasesScreen() {
   const loanOptions = useMemo(
     () =>
       Array.from(new Set(cases.map((c) => c.loan_type).filter(Boolean))).map(
-        (v) => ({
-          label: v!,
-          value: v!,
-        })
+        (v) => ({ label: v!, value: v! })
       ),
     [cases]
   );
   const bankOptions = useMemo(
     () =>
       Array.from(new Set(cases.map((c) => c.bank).filter(Boolean))).map(
-        (v) => ({
-          label: v!,
-          value: v!,
-        })
+        (v) => ({ label: v!, value: v! })
       ),
     [cases]
   );
@@ -339,7 +167,6 @@ export default function ViewCasesScreen() {
     [agencyUsers]
   );
 
-  // core filter function (same signature)
   const applyFilters = useCallback(
     (filters: {
       search: string;
@@ -361,18 +188,45 @@ export default function ViewCasesScreen() {
         return textMatch && assignedMatch && loanMatch && bankMatch;
       });
       setFilteredCases(list);
+      setAppliedSearch(filters.search); // update applied state so "Clear"/button knows current applied search
     },
     []
   );
 
-  // Debounce applyFilters whenever any filter changes (search/assigned/loan/bank)
+  // Debounce applyFilters reading from searchRef (not from controlled value)
   useEffect(() => {
     const timer = setTimeout(() => {
-      applyFilters({ search, assigned, loan, bank });
-    }, 400);
+      const current = (searchRef.current || "").trim();
+      applyFilters({ search: current, assigned, loan, bank });
+    }, 300);
     return () => clearTimeout(timer);
-  }, [search, assigned, loan, bank, applyFilters]);
+  }, [assigned, loan, bank, applyFilters]);
 
+  // ---------- Dropdown modal helpers ----------
+  const openDropdownModal = (which: "assigned" | "loan" | "bank") => {
+    setActiveDropdown(which);
+    if (which === "assigned") {
+      setModalOptions(assignedOptions);
+      setModalTitle("Assigned To");
+    } else if (which === "loan") {
+      setModalOptions(loanOptions);
+      setModalTitle("Loan Type");
+    } else {
+      setModalOptions(bankOptions);
+      setModalTitle("Bank");
+    }
+    setModalVisible(true);
+  };
+
+  const onSelectFromModal = (opt: { label: string; value: string } | null) => {
+    if (activeDropdown === "assigned") setAssigned(opt);
+    else if (activeDropdown === "loan") setLoan(opt);
+    else if (activeDropdown === "bank") setBank(opt);
+    setModalVisible(false);
+    setActiveDropdown(null);
+  };
+
+  /* ---------- Render Case ---------- */
   const renderCase = useCallback(
     ({ item }: { item: Case }) => (
       <TouchableOpacity
@@ -385,10 +239,7 @@ export default function ViewCasesScreen() {
         <Card
           style={[
             styles.card,
-            {
-              backgroundColor: COLORS.card,
-              borderColor: COLORS.border,
-            },
+            { backgroundColor: COLORS.card, borderColor: COLORS.border },
           ]}
         >
           <Card.Title
@@ -450,57 +301,248 @@ export default function ViewCasesScreen() {
     );
   });
 
+  /* ---------- Desktop inline filter row ---------- */
+  function DesktopFilterRow() {
+    return (
+      <View style={styles.desktopFiltersRow}>
+        <View style={styles.desktopSearchWrap}>
+          {/* UNCONTROLLED RN TextInput: keeps focus while typing */}
+          <RNTextInput
+            ref={inputRef}
+            placeholder="Search by Name, Account, or Case ID"
+            defaultValue={appliedSearch}
+            onChangeText={(t) => {
+              searchRef.current = t;
+
+              // 🔥 LIVE real-time filtering when typing
+              clearTimeout((inputRef as any)._timer);
+              (inputRef as any)._timer = setTimeout(() => {
+                applyFilters({
+                  search: searchRef.current,
+                  assigned,
+                  loan,
+                  bank,
+                });
+              }, 200);
+            }}
+            style={[
+              styles.searchInputAlways,
+              styles.searchDesktop,
+              styles.rnSearch,
+            ]}
+            placeholderTextColor={COLORS.textSecondary}
+            returnKeyType="search"
+            autoCapitalize="none"
+            autoCorrect={false}
+            underlineColorAndroid="transparent"
+          />
+        </View>
+
+        <View style={styles.desktopFilterControls}>
+          {profile?.role !== "agent" && (
+            <TouchableOpacity
+              style={styles.desktopFilterItemWrapper}
+              onPress={() => openDropdownModal("assigned")}
+            >
+              <Surface style={styles.inlineFilterSurface}>
+                <Paragraph style={styles.inlineFilterLabel}>
+                  {assigned?.label || "Assigned"}
+                </Paragraph>
+                <Paragraph style={styles.inlineFilterChevron}>▾</Paragraph>
+              </Surface>
+            </TouchableOpacity>
+          )}
+
+          {profile?.role !== "agent" && (
+            <TouchableOpacity
+              style={styles.desktopFilterItemWrapper}
+              onPress={() => openDropdownModal("loan")}
+            >
+              <Surface style={styles.inlineFilterSurface}>
+                <Paragraph style={styles.inlineFilterLabel}>
+                  {loan?.label || "Loan Type"}
+                </Paragraph>
+                <Paragraph style={styles.inlineFilterChevron}>▾</Paragraph>
+              </Surface>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.desktopFilterItemWrapper}
+            onPress={() => openDropdownModal("bank")}
+          >
+            <Surface style={styles.inlineFilterSurface}>
+              <Paragraph style={styles.inlineFilterLabel}>
+                {bank?.label || "Bank"}
+              </Paragraph>
+              <Paragraph style={styles.inlineFilterChevron}>▾</Paragraph>
+            </Surface>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.clearFilterBtnDesktop}
+            activeOpacity={0.85}
+            onPress={() => {
+              setAssigned(null);
+              setLoan(null);
+              setBank(null);
+              searchRef.current = "";
+              if (inputRef.current) inputRef.current.clear();
+              applyFilters({
+                search: "",
+                assigned: null,
+                loan: null,
+                bank: null,
+              });
+            }}
+          >
+            <Paragraph style={styles.clearFilterTextDesktop}>Clear</Paragraph>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={{ flex: 1, backgroundColor: COLORS.bg }}
     >
       <View style={[styles.container, { backgroundColor: COLORS.bg }]}>
-        {/* --- Always-visible search input --- */}
-        <TextInput
-          placeholder="Search by Name, Account, or Case ID"
-          value={search}
-          onChangeText={setSearch}
-          mode="outlined"
-          style={styles.searchInputAlways}
-          textColor={COLORS.textPrimary}
-          placeholderTextColor={COLORS.textSecondary}
-          outlineColor={COLORS.border}
-          activeOutlineColor={COLORS.primary}
-          returnKeyType="search"
-          blurOnSubmit={true}
-        />
+        {isDesktop ? (
+          <DesktopFilterRow />
+        ) : (
+          <>
+            {/* MOBILE: uncontrolled input too */}
+            <RNTextInput
+              ref={inputRef}
+              placeholder="Search by Name, Account, or Case ID"
+              defaultValue={appliedSearch}
+              onChangeText={(t) => {
+                searchRef.current = t;
+              }}
+              style={[styles.searchInputAlways, styles.rnSearch]}
+              placeholderTextColor={COLORS.textSecondary}
+              returnKeyType="search"
+              autoCapitalize="none"
+              autoCorrect={false}
+              underlineColorAndroid="transparent"
+            />
 
-        {/* --- Toggle button (full-width below search) --- */}
-        <View style={styles.filterToggleWrap}>
-          <TouchableOpacity
-            style={styles.filterToggleButton}
-            activeOpacity={0.85}
-            onPress={() => setFilterVisible((prev) => !prev)}
-          >
-            <SlidersHorizontal size={18} color={COLORS.textLight} />
-            <Paragraph style={styles.filterToggleText}>
-              {filterVisible ? "Hide Filters" : "Show Filters"}
-            </Paragraph>
-          </TouchableOpacity>
-        </View>
+            <View style={styles.filterToggleWrap}>
+              <TouchableOpacity
+                style={styles.filterToggleButton}
+                activeOpacity={0.85}
+                onPress={() => setFilterVisible((p) => !p)}
+              >
+                <SlidersHorizontal size={16} color={COLORS.textLight} />
+                <Paragraph style={styles.filterToggleText}>
+                  {filterVisible ? "Hide Filters" : "Show Filters"}
+                </Paragraph>
+              </TouchableOpacity>
+            </View>
 
-        {/* --- Filter card (only dropdowns) --- */}
-        {filterVisible && (
-          <FilterCard
-            profile={profile}
-            assignedOptions={assignedOptions}
-            loanOptions={loanOptions}
-            bankOptions={bankOptions}
-            assigned={assigned}
-            setAssigned={setAssigned}
-            loan={loan}
-            setLoan={setLoan}
-            bank={bank}
-            setBank={setBank}
-            globalSetSearch={setSearch} // NEW
-            applyFilters={applyFilters} // NEW
-          />
+            {filterVisible && (
+              <Card
+                style={[styles.filterCard, { backgroundColor: COLORS.card }]}
+              >
+                <Card.Content>
+                  {profile?.role !== "agent" && (
+                    <TouchableOpacity
+                      onPress={() => openDropdownModal("assigned")}
+                    >
+                      <TextInput
+                        label="Assigned To"
+                        value={assigned?.label || ""}
+                        editable={false}
+                        mode="outlined"
+                        right={<TextInput.Icon icon="chevron-down" />}
+                        style={styles.filterInput}
+                        outlineColor={COLORS.border}
+                        activeOutlineColor={COLORS.primary}
+                      />
+                    </TouchableOpacity>
+                  )}
+
+                  {profile?.role !== "agent" && (
+                    <TouchableOpacity onPress={() => openDropdownModal("loan")}>
+                      <TextInput
+                        label="Loan Type"
+                        value={loan?.label || ""}
+                        editable={false}
+                        mode="outlined"
+                        right={<TextInput.Icon icon="chevron-down" />}
+                        style={styles.filterInput}
+                        outlineColor={COLORS.border}
+                        activeOutlineColor={COLORS.primary}
+                      />
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity onPress={() => openDropdownModal("bank")}>
+                    <TextInput
+                      label="Bank"
+                      value={bank?.label || ""}
+                      editable={false}
+                      mode="outlined"
+                      right={<TextInput.Icon icon="chevron-down" />}
+                      style={styles.filterInput}
+                      outlineColor={COLORS.border}
+                      activeOutlineColor={COLORS.primary}
+                    />
+                  </TouchableOpacity>
+
+                  <Divider
+                    style={{
+                      marginVertical: 10,
+                      backgroundColor: COLORS.border,
+                    }}
+                  />
+
+                  <View style={styles.filterCardFooter}>
+                    <TouchableOpacity
+                      style={styles.clearFilterBtn}
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        setAssigned(null);
+                        setLoan(null);
+                        setBank(null);
+                        searchRef.current = "";
+                        if (inputRef.current) inputRef.current.clear();
+                        applyFilters({
+                          search: "",
+                          assigned: null,
+                          loan: null,
+                          bank: null,
+                        });
+                      }}
+                    >
+                      <Paragraph style={styles.clearFilterText}>
+                        Clear
+                      </Paragraph>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.applyFilterBtn}
+                      activeOpacity={0.85}
+                      onPress={() =>
+                        applyFilters({
+                          search: searchRef.current || "",
+                          assigned,
+                          loan,
+                          bank,
+                        })
+                      }
+                    >
+                      <Paragraph style={styles.applyFilterText}>
+                        Apply
+                      </Paragraph>
+                    </TouchableOpacity>
+                  </View>
+                </Card.Content>
+              </Card>
+            )}
+          </>
         )}
 
         {loading ? (
@@ -512,12 +554,67 @@ export default function ViewCasesScreen() {
         ) : (
           <CasesList data={filteredCases} />
         )}
+
+        {/* ---------- SHARED BOTTOM-SHEET STYLE MODAL (Portal) ---------- */}
+        <Portal>
+          <Dialog
+            visible={modalVisible}
+            onDismiss={() => {
+              setModalVisible(false);
+              setActiveDropdown(null);
+            }}
+            style={styles.bottomSheetDialog}
+          >
+            <Dialog.Title
+              style={{ color: COLORS.textPrimary, fontWeight: "700" }}
+            >
+              {modalTitle}
+            </Dialog.Title>
+            <Dialog.ScrollArea style={{ maxHeight: 320 }}>
+              <View style={{ paddingHorizontal: 8 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    onSelectFromModal(null);
+                  }}
+                  activeOpacity={0.8}
+                  style={styles.popupItem}
+                >
+                  <Paragraph style={styles.popupText}>All</Paragraph>
+                </TouchableOpacity>
+                <Divider />
+                {modalOptions.map((opt) => (
+                  <View key={opt.value}>
+                    <TouchableOpacity
+                      onPress={() => onSelectFromModal(opt)}
+                      activeOpacity={0.8}
+                      style={styles.popupItem}
+                    >
+                      <Paragraph style={styles.popupText}>
+                        {opt.label}
+                      </Paragraph>
+                    </TouchableOpacity>
+                    <Divider />
+                  </View>
+                ))}
+              </View>
+            </Dialog.ScrollArea>
+
+            <Dialog.Actions>
+              <Button
+                textColor={COLORS.primary}
+                onPress={() => setModalVisible(false)}
+              >
+                Close
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-// ---------- Styles ----------
+/* ---------- Styles ---------- */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -525,39 +622,87 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bg,
   },
 
-  // --- Search Bar ---
+  // search
   searchInputAlways: {
     backgroundColor: COLORS.card,
     height: 48,
     borderRadius: 12,
-    marginBottom: 14,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === "ios" ? 12 : 8,
+  },
+  searchDesktop: {
+    marginBottom: 0,
+    height: 48,
   },
 
-  // --- Filter Toggle Button ---
+  // native RN TextInput style wrapper
+  rnSearch: {
+    color: COLORS.textPrimary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+
+  // desktop layout: search left / filters right
+  desktopFiltersRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  desktopSearchWrap: {
+    flex: 1,
+  },
+  desktopFilterControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginLeft: 12,
+    alignSelf: "stretch",
+  },
+  desktopFilterItem: {
+    width: 180,
+  },
+
+  desktopFilterItemWrapper: {
+    width: 160,
+  },
+
+  inlineFilterSurface: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: COLORS.cardAlt,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  inlineFilterLabel: {
+    color: COLORS.textPrimary,
+    fontSize: 14,
+  },
+
+  inlineFilterChevron: {
+    color: COLORS.textSecondary,
+    marginLeft: 8,
+  },
+
+  // filter toggle for mobile
   filterToggleWrap: {
     width: "100%",
     marginBottom: 12,
-    alignItems: "center",
+    alignItems: "flex-start",
   },
-
   filterToggleButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.primary,
     paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 40,
+    paddingHorizontal: 14,
+    borderRadius: 8,
     elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
   },
-
   filterToggleText: {
     color: COLORS.textLight,
     marginLeft: 8,
@@ -565,46 +710,71 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  // --- Filter Card ---
+  // filter card (mobile)
   filterCard: {
     borderRadius: 14,
     backgroundColor: COLORS.card,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
   },
 
   filterInput: {
-    marginBottom: 10,
+    marginBottom: 8,
     height: 46,
     borderRadius: 10,
     backgroundColor: COLORS.cardAlt,
   },
+  filterInputCompact: {
+    height: 40,
+  },
 
-  // Clear Filters Button (top-right inside card)
+  // footer inside mobile filter card
+  filterCardFooter: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginTop: 6,
+  },
+
   clearFilterBtn: {
-    alignSelf: "flex-end",
-    marginTop: 4,
-    marginBottom: 4,
     backgroundColor: COLORS.danger,
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
   },
-
   clearFilterText: {
     color: COLORS.textLight,
-    fontSize: 13,
     fontWeight: "700",
   },
 
-  // Dropdown popup items
+  applyFilterBtn: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  applyFilterText: {
+    color: COLORS.textLight,
+    fontWeight: "700",
+  },
+
+  // clear for desktop inline
+  clearFilterBtnDesktop: {
+    backgroundColor: COLORS.danger,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    justifyContent: "center",
+  },
+  clearFilterTextDesktop: {
+    color: COLORS.textLight,
+    fontWeight: "700",
+  },
+
+  // popup items
   popupItem: {
     paddingVertical: 12,
     paddingHorizontal: 6,
@@ -614,9 +784,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  // --- Case Cards ---
-  touchWrap: { flex: 1, marginHorizontal: 6 },
+  // bottom-sheet dialog tweaks
+  bottomSheetDialog: {
+    margin: 0,
+    justifyContent: "flex-end",
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    overflow: "hidden",
+  },
 
+  // cases list
+  touchWrap: { flex: 1, marginHorizontal: 6 },
   card: {
     flex: 1,
     borderRadius: 16,
@@ -630,28 +808,21 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     overflow: "hidden",
   },
-
   statusChip: {
     height: 28,
     alignItems: "center",
     paddingHorizontal: 10,
   },
-
-  // Card rows
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     marginBottom: 4,
   },
-
-  // Grid (web)
   gridRow: {
     justifyContent: "space-between",
     gap: 12,
   },
-
-  // Empty state
   empty: {
     alignItems: "center",
     marginTop: 80,
