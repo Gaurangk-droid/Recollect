@@ -250,10 +250,19 @@ export default function ViewCasesScreen() {
             left={() => <User2 size={22} color={COLORS.primary} />}
             right={() => (
               <Chip
-                style={[styles.statusChip, { backgroundColor: COLORS.success }]}
-                textStyle={{ color: COLORS.textLight, fontWeight: "700" }}
+                style={{
+                  backgroundColor: COLORS.success + "22", // light tint
+                  borderWidth: 1,
+                  borderColor: COLORS.success + "55",
+                  height: 28,
+                }}
+                textStyle={{
+                  color: COLORS.success,
+                  fontWeight: "700",
+                  fontSize: 12,
+                }}
               >
-                {(item.status || "OPEN").toUpperCase()}
+                {(item.status ?? "OPEN").toUpperCase()}
               </Chip>
             )}
           />
@@ -794,19 +803,21 @@ const styles = StyleSheet.create({
   },
 
   // cases list
-  touchWrap: { flex: 1, marginHorizontal: 6 },
+  touchWrap: {
+    width: Platform.OS === "web" ? "31%" : "100%", // 3 cards per row
+    minWidth: 260, // prevents shrinking on small desktop
+  },
   card: {
-    flex: 1,
-    borderRadius: 16,
-    marginBottom: 16,
+    borderRadius: 18,
+    padding: 12,
     backgroundColor: COLORS.card,
     borderWidth: 1,
     borderColor: COLORS.border,
     shadowColor: "#000",
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.08,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    overflow: "hidden",
+    shadowOffset: { width: 0, height: 4 },
+    marginBottom: 25,
   },
   statusChip: {
     height: 28,
@@ -820,8 +831,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   gridRow: {
-    justifyContent: "space-between",
-    gap: 12,
+    justifyContent: "flex-start",
+    flexWrap: "wrap",
+    columnGap: 20,
+    rowGap: 20,
   },
   empty: {
     alignItems: "center",

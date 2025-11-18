@@ -31,6 +31,11 @@ export const globalStyles = StyleSheet.create({
   alignSelf: "stretch",   // fills parent container
   overflow: "hidden",     // lets ripple effect show fully
   minHeight: 48,          // consistent height across screens
+  },
+ container: {
+  flex: 1,
+  padding: 50,
+  backgroundColor: COLORS.bg,
 },
 
   buttonText: {
