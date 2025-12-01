@@ -3,6 +3,7 @@ import { StyleSheet } from "react-native";
 import { COLORS } from "./theme";
 
 export const globalStyles = StyleSheet.create({
+  // Reusable card style
   card: {
     backgroundColor: COLORS.card,
     borderRadius: 16,
@@ -21,22 +22,29 @@ export const globalStyles = StyleSheet.create({
     backgroundColor: COLORS.card,
   },
 
- button: {
-  backgroundColor: COLORS.primary,
-  borderRadius: 10,
-  alignItems: "center",
-  justifyContent: "center",
-   marginTop: 12,
-  width: "100%",
-  alignSelf: "stretch",   // fills parent container
-  overflow: "hidden",     // lets ripple effect show fully
-  minHeight: 48,          // consistent height across screens
+  button: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+    width: "100%",
+    alignSelf: "stretch",
+    overflow: "hidden",
+    minHeight: 48,
   },
- container: {
-  flex: 1,
-  padding: 50,
-  backgroundColor: COLORS.bg,
-},
+
+  // ⭐ FINAL FIXED SPACING
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+
+    // consistent spacing on all pages
+    paddingHorizontal: 32,
+    paddingVertical: 24,
+
+    // ❌ removed conflicting padding: 20
+  },
 
   buttonText: {
     color: COLORS.textLight,
@@ -45,6 +53,7 @@ export const globalStyles = StyleSheet.create({
     textAlign: "center",
     width: "100%",
   },
+
   title: {
     fontSize: 26,
     fontWeight: "700",
@@ -52,6 +61,7 @@ export const globalStyles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 6,
   },
+
   subtitle: {
     fontSize: 15,
     textAlign: "center",

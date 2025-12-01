@@ -1,3 +1,6 @@
+// Updated AddCase.tsx with same 3-column responsive UI as UpdateCase
+// NOTE: Replace your existing AddCase.tsx with this.
+
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -9,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  Dimensions,
 } from "react-native";
 import {
   TextInput,
@@ -25,7 +29,7 @@ import { supabase } from "../lib/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 import { DatePickerModal } from "react-native-paper-dates";
 
-// ---------- Helpers ----------
+// Case ID Generator
 function generateCaseId(agencyName = "AGY", userName = "USR") {
   const year = new Date().getFullYear();
   const random = Math.floor(100000 + Math.random() * 900000);
@@ -34,20 +38,9 @@ function generateCaseId(agencyName = "AGY", userName = "USR") {
   return `${agencyPart}-${userPart}-${year}-${random}`;
 }
 
-// ---------- Reusable dropdown (Dialog-based) ----------
-function ModalDropdown({
-  label,
-  value,
-  onSelect,
-  options,
-}: {
-  label: string;
-  value: string;
-  onSelect: (v: string) => void;
-  options: { label: string; value: string }[];
-}) {
+// Dropdown Component
+function ModalDropdown({ label, value, onSelect, options }) {
   const [visible, setVisible] = useState(false);
-
   return (
     <>
       <TouchableOpacity onPress={() => setVisible(true)}>
@@ -91,18 +84,20 @@ function ModalDropdown({
 export default function AddCase() {
   const navigation = useNavigation();
 
-  // ---------- State ----------
-  const [profile, setProfile] = useState<any>(null);
-  const [agencyUsers, setAgencyUsers] = useState<any[]>([]);
+  const { width } = Dimensions.get("window");
+  const isWeb = width > 900;
+
+  // STATE
+  const [profile, setProfile] = useState(null);
+  const [agencyUsers, setAgencyUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [confirmSubmitVisible, setConfirmSubmitVisible] = useState(false);
-  const [confirmClearVisible, setConfirmClearVisible] = useState(false);
 
-  // ---------- Form ----------
+  // FORM FIELDS
   const [loanType, setLoanType] = useState("");
   const [accountName, setAccountName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
@@ -113,7 +108,7 @@ export default function AddCase() {
   const [officeAddress, setOfficeAddress] = useState("");
   const [district, setDistrict] = useState("");
   const [village, setVillage] = useState("");
-  const [state, setState] = useState("");
+  const [stateVal, setStateVal] = useState("");
   const [branch, setBranch] = useState("");
   const [bank, setBank] = useState("");
   const [loanAmount, setLoanAmount] = useState("");
@@ -121,16 +116,13 @@ export default function AddCase() {
   const [overdueAmount, setOverdueAmount] = useState("");
   const [overdueSince, setOverdueSince] = useState("");
   const [pendingBalance, setPendingBalance] = useState("");
-  const [pendingBalanceSource, setPendingBalanceSource] = useState<
-    "overdue" | "upgrade"
-  >("overdue");
+  const [pendingBalanceSource, setPendingBalanceSource] = useState("overdue");
   const [upgradeAmount, setUpgradeAmount] = useState("");
   const [loanTenureMonths, setLoanTenureMonths] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [assignedToName, setAssignedToName] = useState("");
-  const [previewCaseId, setPreviewCaseId] = useState("");
 
-  // ---------- Load Profile ----------
+  // LOAD PROFILE
   useEffect(() => {
     const loadProfile = async () => {
       try {
@@ -157,20 +149,19 @@ export default function AddCase() {
         }
 
         setProfile({ ...prof, agency_name: agencyName });
-        const userName = prof?.name ?? "USR";
-        setPreviewCaseId(generateCaseId(agencyName, userName));
+        setAssignedTo(prof.id);
+        setAssignedToName(prof.name);
 
+        // load agency users
         if (prof.agency_id) {
           const { data: users } = await supabase
             .from("users")
             .select("id, name, role")
             .eq("agency_id", prof.agency_id);
           setAgencyUsers(users || []);
-          setAssignedTo(prof.id);
-          setAssignedToName(prof.name);
         }
-      } catch (err: any) {
-        Alert.alert("Error", err?.message || "Failed to load profile");
+      } catch (e) {
+        Alert.alert("Error", e.message);
       } finally {
         setLoading(false);
       }
@@ -178,14 +169,14 @@ export default function AddCase() {
     loadProfile();
   }, []);
 
-  // ---------- Auto Pending Balance ----------
+  // Auto pending balance
   useEffect(() => {
     if (pendingBalanceSource === "overdue") setPendingBalance(overdueAmount);
     else if (pendingBalanceSource === "upgrade" && upgradeAmount)
       setPendingBalance(upgradeAmount);
   }, [pendingBalanceSource, overdueAmount, upgradeAmount]);
 
-  // ---------- Validate ----------
+  // Validation
   const validate = () => {
     if (!accountName.trim()) {
       Alert.alert("Validation", "Account name is required");
@@ -198,34 +189,7 @@ export default function AddCase() {
     return true;
   };
 
-  // ---------- Clear ----------
-  const handleClear = () => {
-    setLoanType("");
-    setAccountName("");
-    setAccountNumber("");
-    setContactNumber("");
-    setOfficeNumber("");
-    setCustomerName("");
-    setCustomerAddress("");
-    setOfficeAddress("");
-    setDistrict("");
-    setVillage("");
-    setState("");
-    setBranch("");
-    setBank("");
-    setLoanAmount("");
-    setMonthlyEmi("");
-    setOverdueAmount("");
-    setOverdueSince("");
-    setPendingBalance("");
-    setUpgradeAmount("");
-    setLoanTenureMonths("");
-    setPendingBalanceSource("overdue");
-    setAssignedTo("");
-    setAssignedToName("");
-  };
-
-  // ---------- Submit ----------
+  // Submit
   const handleSubmit = async () => {
     if (!validate()) return;
 
@@ -239,7 +203,7 @@ export default function AddCase() {
       const payload = {
         case_id,
         agency_id: profile?.agency_id ?? null,
-        assigned_to: assignedTo || profile?.id,
+        assigned_to: assignedTo,
         created_by: profile?.id,
         loan_type: loanType || null,
         account_name: accountName || null,
@@ -251,7 +215,7 @@ export default function AddCase() {
         office_address: officeAddress || null,
         district,
         village,
-        state,
+        state: stateVal,
         branch,
         bank,
         loan_amount: loanAmount ? Number(loanAmount) : null,
@@ -260,9 +224,7 @@ export default function AddCase() {
         overdue_since: overdueSince || null,
         pending_balance: pendingBalance ? Number(pendingBalance) : null,
         upgrade_amount: upgradeAmount ? Number(upgradeAmount) : null,
-        loan_tenure_months: loanTenureMonths
-          ? Number(loanTenureMonths)
-          : null,
+        loan_tenure_months: loanTenureMonths ? Number(loanTenureMonths) : null,
         status: "open",
         is_deleted: false,
       };
@@ -270,27 +232,25 @@ export default function AddCase() {
       const { error } = await supabase.from("cases").insert([payload]);
       if (error) throw error;
 
-      setSnackbarMsg("✅ Case created successfully!");
+      setSnackbarMsg("Case created successfully");
       setShowSnackbar(true);
-      setTimeout(() => handleClear(), 3000);
-    } catch (err: any) {
-      Alert.alert("Error", err?.message || "Failed to save case");
+      navigation.goBack();
+    } catch (e) {
+      Alert.alert("Error", e.message);
     } finally {
       setSubmitting(false);
     }
   };
 
-  // ---------- Loader ----------
   if (loading) {
     return (
       <View style={styles.loader}>
         <ActivityIndicator size="large" color="#004AAD" />
-        <Text style={{ marginTop: 10 }}>Loading profile...</Text>
+        <Text style={{ marginTop: 10 }}>Loading...</Text>
       </View>
     );
   }
 
-  // ---------- UI ----------
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -298,155 +258,283 @@ export default function AddCase() {
     >
       <ScrollView contentContainerStyle={styles.container}>
         <Title style={styles.title}>➕ Add New Case</Title>
-        <Text style={styles.subtitle}>Case ID: {previewCaseId}</Text>
 
-        {/* ---- Account Info ---- */}
-        <Card style={styles.card}>
-          <Card.Title title="Account & Customer Info" titleStyle={styles.cardTitle} />
-          <Card.Content>
-            <Input label="Account Name *" value={accountName} onChangeText={setAccountName} />
-            <Input label="Account Number" value={accountNumber} onChangeText={setAccountNumber} />
-            <Input label="Contact Number" value={contactNumber} onChangeText={setContactNumber} keyboardType="phone-pad" />
-            <Input label="Office Number" value={officeNumber} onChangeText={setOfficeNumber} keyboardType="phone-pad" />
-            <Input label="Customer Name" value={customerName} onChangeText={setCustomerName} />
-            <Input label="Customer Address" value={customerAddress} onChangeText={setCustomerAddress} multiline />
-            <Input label="Office Address" value={officeAddress} onChangeText={setOfficeAddress} multiline />
-            <Input label="District" value={district} onChangeText={setDistrict} />
-            <Input label="Village" value={village} onChangeText={setVillage} />
-            <Input label="State" value={state} onChangeText={setState} />
-          </Card.Content>
-        </Card>
-
-        {/* ---- Loan Details ---- */}
-        <Card style={styles.card}>
-          <Card.Title title="Loan Details" titleStyle={styles.cardTitle} />
-          <Card.Content>
-            <Input label="Loan Amount" value={loanAmount} onChangeText={setLoanAmount} keyboardType="numeric" />
-            <Input label="Monthly EMI" value={monthlyEmi} onChangeText={setMonthlyEmi} keyboardType="numeric" />
-            <Input label="Overdue Amount *" value={overdueAmount} onChangeText={setOverdueAmount} keyboardType="numeric" />
-            <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
-              <TextInput
-                label="Overdue Since"
-                mode="outlined"
-                value={overdueSince}
-                editable={false}
-                right={<TextInput.Icon icon="calendar" />}
-                style={styles.input}
+        {/* ROW WRAPPER */}
+        <View style={[isWeb ? styles.webRow : {}]}>
+          {/* COL 1 */}
+          <View style={[isWeb ? styles.webCol1 : {}]}>
+            <Card style={styles.card}>
+              <Card.Title
+                title="Account & Customer Info"
+                titleStyle={styles.cardTitle}
               />
-            </TouchableOpacity>
-            <DatePickerModal
-              locale="en"
-              mode="single"
-              visible={datePickerOpen}
-              onDismiss={() => setDatePickerOpen(false)}
-              date={overdueSince ? new Date(overdueSince) : undefined}
-              onConfirm={({ date }) => {
-                if (date) {
-                  const formatted = date.toISOString().split("T")[0];
-                  setOverdueSince(formatted);
-                }
-                setDatePickerOpen(false);
-              }}
-            />
-            <Input label="Upgrade Amount" value={upgradeAmount} onChangeText={setUpgradeAmount} keyboardType="numeric" />
-            <View style={styles.toggleRow}>
+              <Card.Content>
+                <TextInput
+                  style={styles.input}
+                  label="Account Name *"
+                  mode="outlined"
+                  value={accountName}
+                  onChangeText={setAccountName}
+                />
+                <TextInput
+                  style={styles.input}
+                  label="Account Number"
+                  mode="outlined"
+                  value={accountNumber}
+                  onChangeText={setAccountNumber}
+                />
+                <TextInput
+                  style={styles.input}
+                  label="Contact Number"
+                  mode="outlined"
+                  value={contactNumber}
+                  onChangeText={setContactNumber}
+                  keyboardType="phone-pad"
+                />
+                <TextInput
+                  style={styles.input}
+                  label="Office Number"
+                  mode="outlined"
+                  value={officeNumber}
+                  onChangeText={setOfficeNumber}
+                  keyboardType="phone-pad"
+                />
+                <TextInput
+                  style={styles.input}
+                  label="Customer Name"
+                  mode="outlined"
+                  value={customerName}
+                  onChangeText={setCustomerName}
+                />
+                <TextInput
+                  style={styles.input}
+                  label="Customer Address"
+                  mode="outlined"
+                  value={customerAddress}
+                  onChangeText={setCustomerAddress}
+                  multiline
+                />
+                <TextInput
+                  style={styles.input}
+                  label="Office Address"
+                  mode="outlined"
+                  value={officeAddress}
+                  onChangeText={setOfficeAddress}
+                  multiline
+                />
+                <TextInput
+                  style={styles.input}
+                  label="District"
+                  mode="outlined"
+                  value={district}
+                  onChangeText={setDistrict}
+                />
+                <TextInput
+                  style={styles.input}
+                  label="Village"
+                  mode="outlined"
+                  value={village}
+                  onChangeText={setVillage}
+                />
+                <TextInput
+                  style={styles.input}
+                  label="State"
+                  mode="outlined"
+                  value={stateVal}
+                  onChangeText={setStateVal}
+                />
+              </Card.Content>
+            </Card>
+          </View>
+
+          {/* COL 2 */}
+          <View style={[isWeb ? styles.webCol2 : {}]}>
+            <Card style={styles.card}>
+              <Card.Title title="Loan Details" titleStyle={styles.cardTitle} />
+              <Card.Content>
+                <TextInput
+                  style={styles.input}
+                  label="Loan Amount"
+                  mode="outlined"
+                  value={loanAmount}
+                  onChangeText={setLoanAmount}
+                  keyboardType="numeric"
+                />
+                <TextInput
+                  style={styles.input}
+                  label="Monthly EMI"
+                  mode="outlined"
+                  value={monthlyEmi}
+                  onChangeText={setMonthlyEmi}
+                  keyboardType="numeric"
+                />
+                <TextInput
+                  style={styles.input}
+                  label="Overdue Amount *"
+                  mode="outlined"
+                  value={overdueAmount}
+                  onChangeText={setOverdueAmount}
+                  keyboardType="numeric"
+                />
+
+                <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
+                  <TextInput
+                    label="Overdue Since"
+                    mode="outlined"
+                    value={overdueSince}
+                    editable={false}
+                    style={styles.input}
+                    right={<TextInput.Icon icon="calendar" />}
+                  />
+                </TouchableOpacity>
+
+                <DatePickerModal
+                  locale="en"
+                  mode="single"
+                  visible={datePickerOpen}
+                  onDismiss={() => setDatePickerOpen(false)}
+                  date={overdueSince ? new Date(overdueSince) : undefined}
+                  onConfirm={({ date }) => {
+                    if (date) setOverdueSince(date.toISOString().split("T")[0]);
+                    setDatePickerOpen(false);
+                  }}
+                />
+
+                <TextInput
+                  style={styles.input}
+                  label="Upgrade Amount"
+                  mode="outlined"
+                  value={upgradeAmount}
+                  onChangeText={setUpgradeAmount}
+                  keyboardType="numeric"
+                />
+
+                <View style={styles.toggleRow}>
+                  <Button
+                    mode={
+                      pendingBalanceSource === "overdue"
+                        ? "contained"
+                        : "outlined"
+                    }
+                    onPress={() => {
+                      setPendingBalanceSource("overdue");
+                      setPendingBalance(overdueAmount);
+                    }}
+                    style={styles.toggleBtn}
+                  >
+                    Overdue
+                  </Button>
+                  <Button
+                    mode={
+                      pendingBalanceSource === "upgrade"
+                        ? "contained"
+                        : "outlined"
+                    }
+                    onPress={() => {
+                      if (!upgradeAmount)
+                        return Alert.alert("Enter upgrade amount first");
+                      setPendingBalanceSource("upgrade");
+                      setPendingBalance(upgradeAmount);
+                    }}
+                    style={styles.toggleBtn}
+                  >
+                    Upgrade
+                  </Button>
+                </View>
+
+                <TextInput
+                  style={styles.input}
+                  label="Pending Balance"
+                  mode="outlined"
+                  value={pendingBalance}
+                  editable={false}
+                />
+                <TextInput
+                  style={styles.input}
+                  label="Loan Tenure (Months)"
+                  mode="outlined"
+                  value={loanTenureMonths}
+                  onChangeText={setLoanTenureMonths}
+                  keyboardType="numeric"
+                />
+              </Card.Content>
+            </Card>
+          </View>
+
+          {/* COL 3 */}
+          <View style={[isWeb ? styles.webCol3 : {}]}>
+            <Card style={styles.card}>
+              <Card.Title
+                title="Loan Type & Assignment"
+                titleStyle={styles.cardTitle}
+              />
+              <Card.Content>
+                <ModalDropdown
+                  label="Loan Type"
+                  value={loanType || ""}
+                  onSelect={setLoanType}
+                  options={[
+                    { label: "CC", value: "CC" },
+                    { label: "Gold Loan", value: "Gold Loan" },
+                    { label: "Home Loan", value: "Home Loan" },
+                    { label: "Personal Loan", value: "Personal Loan" },
+                    { label: "2 Wheeler Loan", value: "2 Wheeler Loan" },
+                    { label: "Auto Loan", value: "Auto Loan" },
+                  ]}
+                />
+
+                <TextInput
+                  style={styles.input}
+                  label="Bank"
+                  mode="outlined"
+                  value={bank}
+                  onChangeText={setBank}
+                />
+                <TextInput
+                  style={styles.input}
+                  label="Branch"
+                  mode="outlined"
+                  value={branch}
+                  onChangeText={setBranch}
+                />
+
+                <ModalDropdown
+                  label="Assigned To"
+                  value={assignedToName}
+                  onSelect={(id) => {
+                    setAssignedTo(id);
+                    const u = agencyUsers.find((x) => x.id === id);
+                    setAssignedToName(u?.name || "");
+                  }}
+                  options={agencyUsers.map((u) => ({
+                    label: u.name,
+                    value: u.id,
+                  }))}
+                />
+              </Card.Content>
+            </Card>
+
+            {/* BUTTONS */}
+            <View style={styles.btnRow}>
               <Button
-                mode={pendingBalanceSource === "overdue" ? "contained" : "outlined"}
-                onPress={() => {
-                  setPendingBalance(overdueAmount);
-                  setPendingBalanceSource("overdue");
-                }}
-                style={styles.toggleBtn}
+                mode="contained"
+                onPress={() => setConfirmSubmitVisible(true)}
+                loading={submitting}
+                style={[styles.btn, { backgroundColor: "#004AAD" }]}
               >
-                Overdue
+                {submitting ? "Creating..." : "Create Case"}
               </Button>
+
               <Button
-                mode={pendingBalanceSource === "upgrade" ? "contained" : "outlined"}
-                onPress={() => {
-                  if (!upgradeAmount || Number(upgradeAmount) <= 0) {
-                    Alert.alert("Missing", "Please enter an Upgrade Amount first.");
-                    return;
-                  }
-                  setPendingBalance(upgradeAmount);
-                  setPendingBalanceSource("upgrade");
-                }}
-                style={styles.toggleBtn}
+                mode="outlined"
+                textColor="#004AAD"
+                style={styles.btn}
+                onPress={() => navigation.goBack()}
               >
-                Upgrade
+                Cancel
               </Button>
             </View>
-            <Input label="Pending Balance" value={pendingBalance} editable={false} />
-            <Input label="Loan Tenure (Months)" value={loanTenureMonths} onChangeText={setLoanTenureMonths} keyboardType="numeric" />
-          </Card.Content>
-        </Card>
-
-        {/* ---- Loan Type ---- */}
-        <Card style={styles.card}>
-          <Card.Title title="Loan Type" titleStyle={styles.cardTitle} />
-          <Card.Content>
-            <ModalDropdown
-              label="Loan Type"
-              value={loanType || ""}
-              onSelect={(v) => setLoanType(v)}
-              options={[
-                { label: "CC", value: "CC" },
-                { label: "Gold Loan", value: "Gold Loan" },
-                { label: "Home Loan", value: "Home Loan" },
-                { label: "Personal Loan", value: "Personal Loan" },
-                { label: "2 Wheeler Loan", value: "2 Wheeler Loan" },
-                { label: "Auto Loan", value: "Auto Loan" },
-              ]}
-            />
-          </Card.Content>
-
-           <Card.Title title="Assign To" titleStyle={styles.cardTitle} />
-          <Card.Content>
-            <ModalDropdown
-              label="Assign To"
-              value={assignedToName || ""}
-              onSelect={(val) => {
-                setAssignedTo(val);
-                const u = agencyUsers.find((x) => x.id === val);
-                setAssignedToName(u ? `${u.name} (${u.role})` : "");
-              }}
-              options={agencyUsers.map((u) => ({
-                label: `${u.name} (${u.role})`,
-                value: u.id,
-              }))}
-            />
-          </Card.Content>
-        </Card>
-
-        {/* ---- Bank Details ---- */}
-        <Card style={styles.card}>
-          <Card.Title title="Bank Details" titleStyle={styles.cardTitle} />
-          <Card.Content>
-            <Input label="Bank" value={bank} onChangeText={setBank} />
-            <Input label="Branch" value={branch} onChangeText={setBranch} />
-          </Card.Content>
-        </Card>
-
-        {/* ---- Assigned To ---- */}
-      
-
-        {/* ---- Buttons ---- */}
-        <View style={styles.btnRow}>
-          <Button
-            mode="contained"
-            onPress={() => setConfirmSubmitVisible(true)}
-            loading={submitting}
-            style={[styles.btn, { backgroundColor: "#004AAD" }]}
-          >
-            {submitting ? "Saving..." : "Create Case"}
-          </Button>
-          <Button
-            mode="outlined"
-            textColor="#004AAD"
-            style={styles.btn}
-            onPress={() => setConfirmClearVisible(true)}
-          >
-            Clear
-          </Button>
+          </View>
         </View>
 
         <Snackbar
@@ -459,64 +547,31 @@ export default function AddCase() {
         </Snackbar>
       </ScrollView>
 
-      {/* ---- Confirm Dialogs ---- */}
-      <Dialog visible={confirmSubmitVisible} onDismiss={() => setConfirmSubmitVisible(false)}>
+      {/* Confirm Submit */}
+      <Dialog
+        visible={confirmSubmitVisible}
+        onDismiss={() => setConfirmSubmitVisible(false)}
+      >
         <Dialog.Title>Create Case?</Dialog.Title>
         <Dialog.Content>
           <Paragraph>Are you sure you want to create this case?</Paragraph>
         </Dialog.Content>
         <Dialog.Actions>
           <Button onPress={() => setConfirmSubmitVisible(false)}>No</Button>
-          <Button
-            onPress={() => {
-              setConfirmSubmitVisible(false);
-              handleSubmit();
-            }}
-          >
-            Yes
-          </Button>
-        </Dialog.Actions>
-      </Dialog>
-
-      <Dialog visible={confirmClearVisible} onDismiss={() => setConfirmClearVisible(false)}>
-        <Dialog.Title>Clear Form?</Dialog.Title>
-        <Dialog.Content>
-          <Paragraph>Are you sure you want to clear?</Paragraph>
-        </Dialog.Content>
-        <Dialog.Actions>
-          <Button onPress={() => setConfirmClearVisible(false)}>No</Button>
-          <Button
-            onPress={() => {
-              setConfirmClearVisible(false);
-              handleClear();
-            }}
-          >
-            Yes
-          </Button>
+          <Button onPress={handleSubmit}>Yes</Button>
         </Dialog.Actions>
       </Dialog>
     </KeyboardAvoidingView>
   );
 }
 
-// ---------- Components ----------
-const Input = (props: any) => (
-  <TextInput
-    mode="outlined"
-    dense
-    outlineColor="#004AAD"
-    activeOutlineColor="#004AAD"
-    style={styles.input}
-    {...props}
-  />
-);
-
-// ---------- Styles ----------
+// ------------- Styles -------------
 const styles = StyleSheet.create({
   container: {
-    padding: 18,
+    flex: 1,
+    paddingHorizontal: 24, // a bit wider so content never hugs the edges
+    paddingVertical: 20,
     backgroundColor: "#f8faff",
-    flexGrow: 1,
   },
   loader: {
     flex: 1,
@@ -524,15 +579,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   title: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 22,
+    fontWeight: "700",
     color: "#004AAD",
     textAlign: "center",
-  },
-  subtitle: {
-    textAlign: "center",
-    color: "#666",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   input: {
     marginBottom: 10,
@@ -541,10 +592,11 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "#fff",
     borderRadius: 10,
-    marginBottom: 14,
+    marginBottom: 18,
+    padding: 14, // add inner padding so fields don't touch card edges
     elevation: 2,
     shadowColor: "#000",
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.06,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
   },
@@ -553,7 +605,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   btnRow: {
-    flexDirection: "row",
+    flexDirection: "column",
     justifyContent: "space-between",
     marginTop: 14,
     gap: 10,
@@ -566,4 +618,13 @@ const styles = StyleSheet.create({
   },
   toggleBtn: { flex: 1, marginHorizontal: 4 },
   dropdownItem: { paddingVertical: 8 },
+
+  webRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  webCol1: { width: "35%", paddingHorizontal: 12 },
+  webCol2: { width: "35%", paddingHorizontal: 12 },
+  webCol3: { width: "30%", paddingHorizontal: 12 },
 });
