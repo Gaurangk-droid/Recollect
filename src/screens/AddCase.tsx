@@ -28,6 +28,20 @@ import {
 import { supabase } from "../lib/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 import { DatePickerModal } from "react-native-paper-dates";
+// ---- TYPES ----
+type UserProfile = {
+  id: string;
+  name: string;
+  role: string;
+  agency_id: string | null;
+  agency_name: string;
+};
+
+type AgencyUser = {
+  id: string;
+  name: string;
+  role: string;
+};
 
 // Case ID Generator
 function generateCaseId(agencyName = "AGY", userName = "USR") {
@@ -88,8 +102,8 @@ export default function AddCase() {
   const isWeb = width > 900;
 
   // STATE
-  const [profile, setProfile] = useState(null);
-  const [agencyUsers, setAgencyUsers] = useState([]);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [agencyUsers, setAgencyUsers] = useState<AgencyUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showSnackbar, setShowSnackbar] = useState(false);
@@ -194,6 +208,7 @@ export default function AddCase() {
     if (!validate()) return;
 
     setSubmitting(true);
+
     try {
       const case_id = generateCaseId(
         profile?.agency_name ?? "AGY",
@@ -232,9 +247,44 @@ export default function AddCase() {
       const { error } = await supabase.from("cases").insert([payload]);
       if (error) throw error;
 
+      // 🔥 close confirmation dialog
+      setConfirmSubmitVisible(false);
+
+      // 🔥 reset all fields
+      setLoanType("");
+      setAccountName("");
+      setAccountNumber("");
+      setContactNumber("");
+      setOfficeNumber("");
+      setCustomerName("");
+      setCustomerAddress("");
+      setOfficeAddress("");
+      setDistrict("");
+      setVillage("");
+      setStateVal("");
+      setBranch("");
+      setBank("");
+      setLoanAmount("");
+      setMonthlyEmi("");
+      setOverdueAmount("");
+      setOverdueSince("");
+      setPendingBalance("");
+      setUpgradeAmount("");
+      setLoanTenureMonths("");
+
+      // reset pending balance mode
+      setPendingBalanceSource("overdue");
+
+      // Reset assignment back to logged-in user
+      setAssignedTo(profile.id);
+      setAssignedToName(profile.name);
+
+      // success message
       setSnackbarMsg("Case created successfully");
       setShowSnackbar(true);
-      navigation.goBack();
+
+      // ❌ removed navigation.goBack()
+      // ➜ user stays on AddCase with blank fields
     } catch (e) {
       Alert.alert("Error", e.message);
     } finally {
@@ -518,7 +568,11 @@ export default function AddCase() {
             <View style={styles.btnRow}>
               <Button
                 mode="contained"
-                onPress={() => setConfirmSubmitVisible(true)}
+                onPress={() => {
+                  if (validate()) {
+                    setConfirmSubmitVisible(true); // open popup ONLY if valid
+                  }
+                }}
                 loading={submitting}
                 style={[styles.btn, { backgroundColor: "#004AAD" }]}
               >
